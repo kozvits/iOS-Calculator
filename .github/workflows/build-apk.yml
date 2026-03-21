@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       # ── 3. Java (нужен для Gradle) ───────────────────────────────────────────
       - name: Setup Java JDK 17
@@ -37,7 +36,7 @@ jobs:
 
       # ── 5. Установить зависимости npm ────────────────────────────────────────
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install
 
       # ── 6. Добавить платформу Android ────────────────────────────────────────
       - name: Add Capacitor Android platform
