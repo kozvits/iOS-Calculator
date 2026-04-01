@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ioscalculator.state.CalculatorEvent
 import com.example.ioscalculator.state.CalculatorState.Active
 import com.example.ioscalculator.ui.components.CalculatorUtilityBar
 import com.example.ioscalculator.ui.components.DisplayPanel
@@ -21,10 +22,6 @@ import com.example.ioscalculator.ui.components.PortraitButtonGrid
 import com.example.ioscalculator.ui.theme.CalcColors
 import com.example.ioscalculator.viewmodel.CalculatorViewModel
 
-/**
- * Единственный экран приложения.
- * Автоматически переключает раскладку при смене ориентации.
- */
 @Composable
 fun CalculatorScreen(
     viewModel: CalculatorViewModel = hiltViewModel(),
@@ -68,17 +65,16 @@ fun CalculatorScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                // 🔹 2️⃣ Панель утилит (Settings | History | Backspace)
+                // 🔹 2️⃣ Панель утилит
                 if (state is Active) {
                     CalculatorUtilityBar(
-                        onSettingsClick = { /* viewModel.onEvent(CalculatorEvent.OpenSettings) */ },
-                        onHistoryClick  = { /* viewModel.onEvent(CalculatorEvent.OpenHistory)  */ },
-                        onBackspaceClick = { viewModel.onEvent(CalculatorEvent.Backspace) },
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        onSettingsClick  = { viewModel.onEvent(CalculatorEvent.OpenSettings) },
+                        onHistoryClick   = { viewModel.onEvent(CalculatorEvent.OpenHistory)  },
+                        onBackspaceClick = { viewModel.onEvent(CalculatorEvent.Backspace)    }
                     )
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 // 3️⃣ Сетка кнопок
                 if (state is Active) {
