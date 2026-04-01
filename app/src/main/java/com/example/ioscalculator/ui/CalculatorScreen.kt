@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ioscalculator.state.CalculatorState.Active
+import com.example.ioscalculator.ui.components.CalculatorUtilityBar
 import com.example.ioscalculator.ui.components.DisplayPanel
 import com.example.ioscalculator.ui.components.LandscapeButtonGrid
 import com.example.ioscalculator.ui.components.PortraitButtonGrid
@@ -23,7 +24,6 @@ import com.example.ioscalculator.viewmodel.CalculatorViewModel
 /**
  * Единственный экран приложения.
  * Автоматически переключает раскладку при смене ориентации.
- * Состояние сохраняется через CalculatorViewModel (survives config change).
  */
 @Composable
 fun CalculatorScreen(
@@ -33,7 +33,6 @@ fun CalculatorScreen(
     val config = LocalConfiguration.current
     val isLandscape = config.screenWidthDp > config.screenHeightDp
 
-    // Размер кнопки адаптируется к размеру экрана
     val buttonSize = if (isLandscape) {
         ((config.screenHeightDp - 5 * 8) / 5).coerceIn(44, 72).dp
     } else {
@@ -57,7 +56,7 @@ fun CalculatorScreen(
                     .padding(horizontal = 8.dp),
                 verticalArrangement = Arrangement.Bottom,
             ) {
-                // Дисплей
+                // 1️⃣ Дисплей
                 if (state is Active) {
                     DisplayPanel(
                         text = (state as Active).displayText,
@@ -69,7 +68,19 @@ fun CalculatorScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Сетка кнопок
+                // 🔹 2️⃣ Панель утилит (Settings | History | Backspace)
+                if (state is Active) {
+                    CalculatorUtilityBar(
+                        onSettingsClick = { /* viewModel.onEvent(CalculatorEvent.OpenSettings) */ },
+                        onHistoryClick  = { /* viewModel.onEvent(CalculatorEvent.OpenHistory)  */ },
+                        onBackspaceClick = { viewModel.onEvent(CalculatorEvent.Backspace) },
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // 3️⃣ Сетка кнопок
                 if (state is Active) {
                     Box(
                         modifier = Modifier
