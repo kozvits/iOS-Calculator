@@ -26,4 +26,9 @@ sealed interface CalculatorEvent {
     data class AngleModeChanged(val mode: AngleMode) : CalculatorEvent
     data object OpenBracket : CalculatorEvent
     data object CloseBracket : CalculatorEvent
+
+    // ── Управление и навигация ────────────────────────────────────
+    data object Backspace : CalculatorEvent
+    data object OpenSettings : CalculatorEvent
+    data object OpenHistory : CalculatorEvent
 }
