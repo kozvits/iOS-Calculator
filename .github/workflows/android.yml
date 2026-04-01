@@ -1,6 +1,3 @@
-Вот финальный исправленный workflow с **гарантированным** отсутствием ошибки `Permission denied`:
-
-```yaml
 name: Android CI
 
 on:
