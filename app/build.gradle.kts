@@ -71,6 +71,9 @@ dependencies {
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 
+    // 🔹 ДОБАВЛЕНО: Иконки History, Delete, Settings и другие из Material Extended
+    implementation("androidx.compose.material:material-icons-extended")
+
     testImplementation(libs.junit)
 
     debugImplementation(libs.androidx.ui.tooling)
