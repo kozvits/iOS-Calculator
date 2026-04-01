@@ -20,16 +20,15 @@ jobs:
       - name: Checkout репозитория
         uses: actions/checkout@v4
 
-      # КРИТИЧНО: Устанавливаем права ДО настройки Gradle/Java
-      - name: Права на выполнение gradlew
-        run: chmod +x gradlew
-
       - name: Настройка JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      - name: Права на выполнение gradlew
+        run: chmod +x gradlew
 
       - name: Настройка Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -95,16 +94,15 @@ jobs:
       - name: Checkout репозитория
         uses: actions/checkout@v4
 
-      # КРИТИЧНО: Устанавливаем права ДО настройки Gradle/Java
-      - name: Права на выполнение gradlew
-        run: chmod +x gradlew
-
       - name: Настройка JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      - name: Права на выполнение gradlew
+        run: chmod +x gradlew
 
       - name: Настройка Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -134,7 +132,11 @@ jobs:
       #   STORE_PASSWORD    — пароль keystore
       #
       - name: Подпись APK
-        if: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEY_ALIAS != '' && secrets.KEY_PASSWORD != '' && secrets.STORE_PASSWORD != '' }}
+        if: |
+          env.KEYSTORE_BASE64 != '' &&
+          env.KEY_ALIAS != '' &&
+          env.KEY_PASSWORD != '' &&
+          env.STORE_PASSWORD != ''
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -175,44 +177,8 @@ jobs:
             Автоматическая сборка из тега `${{ github.ref_name }}`.
 
             ### Установка
-            Скачайте APK и установите:
-            ```
+            Скачайте APK и установите через adb:
             adb install app-release.apk
-            ```
           files: app/build/outputs/apk/release/*.apk
           draft: false
           prerelease: false
-```
-
-## Ключевое исправление (строка ~189):
-
-**Было (ошибка YAML):**
-```yaml
-      - name: Подпись APK
-        if: |
-          env.KEYSTORE_BASE64 != '' &&
-          env.KEY_ALIAS != '' &&
-          env.KEY_PASSWORD != '' &&
-          env.STORE_PASSWORD != ''
-```
-
-**Стало (корректно):**
-```yaml
-      - name: Подпись APK
-        if: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEY_ALIAS != '' && secrets.KEY_PASSWORD != '' && secrets.STORE_PASSWORD != '' }}
-```
-
-## Почему это исправление критично:
-
-1. **`if:`** в GitHub Actions должен содержать выражение в формате `${{ ... }}` **в одной строке**
-2. Многострочный литерал `|` интерпретируется как **строка**, а не как выражение
-3. Использование `env.` в условии некорректно — нужно проверять `secrets.` напрямую
-4. Условие вычисляется **до** выполнения шага, поэтому `env` из этого шага недоступны
-
-## Проверьте также:
-
-1. **Порядок шагов**: `chmod +x gradlew` идет сразу после `checkout` ✅
-2. **Отступы**: все шаги используют 4 пробела (не табуляцию) ✅
-3. **Синтаксис блоков `run: |`**: все последующие строки должны иметь отступ ≥ отступа `run` ✅
-
-Теперь workflow должен проходить валидацию YAML и работать без ошибок `Permission denied`.
