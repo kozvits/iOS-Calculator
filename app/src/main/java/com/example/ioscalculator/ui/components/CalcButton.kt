@@ -4,11 +4,17 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,10 +76,12 @@ fun CalcButton(
     val effectiveBg   = if (isActive) CalcColors.ActiveOpButton else backgroundColor
     val effectiveText = if (isActive) CalcColors.ActiveOpText   else textColor
 
+    // 🔧 ИСПРАВЛЕНИЕ: явное приведение типов Dp -> Float -> Dp
     val width = if (widthMultiplier > 1f) {
-        // Для кнопки 0: ширина = size * 2 + 8dp (зазор)
-        size * widthMultiplier + (widthMultiplier - 1f) * 8.dp.value.dp
-    } else size
+        ((size.value * widthMultiplier) + ((widthMultiplier - 1f) * 8f)).dp
+    } else {
+        size
+    }
 
     Box(
         modifier = Modifier
