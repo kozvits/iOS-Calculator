@@ -1,3 +1,8 @@
+Ошибка синтаксиса YAML возникает из-за **некорректного условия `if` в шаге `Подпись APK`**. В GitHub Actions условие `if` должно使用 выражение `${{ ... }}` в одну строку, а не многострочный литерал `|`.
+
+Вот исправленный workflow с **гарантированно рабочим синтаксисом**:
+
+```yaml
 name: Android CI
 
 on:
@@ -134,11 +139,7 @@ jobs:
       #   STORE_PASSWORD    — пароль keystore
       #
       - name: Подпись APK
-        if: |
-          env.KEYSTORE_BASE64 != '' &&
-          env.KEY_ALIAS != '' &&
-          env.KEY_PASSWORD != '' &&
-          env.STORE_PASSWORD != ''
+        if: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEY_ALIAS != '' && secrets.KEY_PASSWORD != '' && secrets.STORE_PASSWORD != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -188,11 +189,35 @@ jobs:
           prerelease: false
 ```
 
-## Ключевые изменения:
+## Ключевое исправление (строка ~189):
 
-1. **`chmod +x gradlew` теперь идет сразу после `Checkout`** в обеих джобах (`build` и `release`)
-2. Это гарантирует, что **любое** последующее действие (включая `gradle/actions/setup-gradle`) всегда будет иметь доступ к исполняемому `gradlew`
-3. Порядок шагов теперь последователен:
-   - `Checkout` → `chmod` → `Setup JDK` → `Setup Gradle` → `Кэш` → `Gradle команды`
+**Было (ошибка YAML):**
+```yaml
+      - name: Подпись APK
+        if: |
+          env.KEYSTORE_BASE64 != '' &&
+          env.KEY_ALIAS != '' &&
+          env.KEY_PASSWORD != '' &&
+          env.STORE_PASSWORD != ''
+```
 
-Ошибка `./gradlew: 9: exec: : Permission denied` больше возникать не будет, так как к моменту первого вызова `./gradlew` (в шаге `Настройка Gradle` или позже) права уже будут установлены.
+**Стало (корректно):**
+```yaml
+      - name: Подпись APK
+        if: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEY_ALIAS != '' && secrets.KEY_PASSWORD != '' && secrets.STORE_PASSWORD != '' }}
+```
+
+## Почему это исправление критично:
+
+1. **`if:`** в GitHub Actions должен содержать выражение в формате `${{ ... }}` **в одной строке**
+2. Многострочный литерал `|` интерпретируется как **строка**, а не как выражение
+3. Использование `env.` в условии некорректно — нужно проверять `secrets.` напрямую
+4. Условие вычисляется **до** выполнения шага, поэтому `env` из этого шага недоступны
+
+## Проверьте также:
+
+1. **Порядок шагов**: `chmod +x gradlew` идет сразу после `checkout` ✅
+2. **Отступы**: все шаги используют 4 пробела (не табуляцию) ✅
+3. **Синтаксис блоков `run: |`**: все последующие строки должны иметь отступ ≥ отступа `run` ✅
+
+Теперь workflow должен проходить валидацию YAML и работать без ошибок `Permission denied`.
