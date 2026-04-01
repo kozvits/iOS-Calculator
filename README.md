@@ -1,134 +1,86 @@
-# iOS Calculator Clone
+# iOS Calculator Clone — Android
 
-Точная копия калькулятора Apple iOS — Progressive Web App (PWA) с поддержкой Capacitor для сборки APK под Android.
+Точная визуальная и алгоритмическая копия нативного калькулятора iOS (iPhone 15 / iOS 17+), реализованная на современном Android-стеке.
+
+## Стек
+
+| Слой        | Технология                              |
+|-------------|-----------------------------------------|
+| Язык        | Kotlin 1.9+                             |
+| UI          | Jetpack Compose (кастомная отрисовка)   |
+| Архитектура | MVI + StateFlow                         |
+| DI          | Hilt                                    |
+| Coroutines  | kotlinx.coroutines 1.8+                 |
+| Min SDK     | 24 (Android 7.0)                        |
+| Target SDK  | 34 (Android 14)                         |
 
 ## Возможности
 
-- Точный дизайн iOS калькулятора (цвета, шрифты, кнопки)
-- Полная математическая логика (AC/C, %, +/-, цепочки операций)
-- PWA — устанавливается на Android/iOS как приложение
-- Работает офлайн (Service Worker)
-- Поддержка клавиатуры на десктопе
-- Адаптивная вёрстка (портрет/ландшафт)
+- **Портрет**: стандартный калькулятор (4×5 сетка)
+- **Ландшафт**: научный режим с тригонометрией, логарифмами, скобками
+- **iOS-логика**: немедленное выполнение операций (не AST)
+- **Процент**: `100 + 10% = 110` (iOS-поведение)
+- **Haptic Feedback**: тактильная отдача при каждом нажатии
+- **Анимации**: масштабирование кнопок при нажатии
+- **Поворот**: плавная смена раскладки с сохранением состояния
 
----
-
-## Быстрый старт (локальный запуск)
-
-```bash
-# 1. Установить зависимости
-npm install
-
-# 2. Запустить локальный сервер
-npm start
-# Открыть: http://localhost:3000
-```
-
----
-
-## Загрузка на GitHub
+## Сборка
 
 ```bash
-# Инициализировать git
-git init
-git add .
-git commit -m "feat: iOS Calculator clone — PWA + Capacitor"
+# Клонировать репозиторий
+git clone https://github.com/YOUR_USERNAME/IOSCalculator.git
+cd IOSCalculator
 
-# Создать репозиторий (нужен GitHub CLI)
-gh repo create ios-calculator --public --push
-
-# ИЛИ через git remote вручную:
-git remote add origin https://github.com/ВАШ_ЛОГИН/ios-calculator.git
-git branch -M main
-git push -u origin main
-```
-
----
-
-## Сборка APK через Capacitor
-
-### Требования
-- Node.js 18+
-- Java JDK 17 (`java -version`)
-- Android Studio (или Android SDK + `ANDROID_SDK_ROOT`)
-
-### Шаги
-
-```bash
-# 1. Установить зависимости
-npm install
-
-# 2. Добавить платформу Android (только первый раз)
-npx cap add android
-
-# 3. Синхронизировать файлы
-npx cap sync android
-
-# 4. Собрать debug APK
-cd android
+# Debug-сборка
 ./gradlew assembleDebug
 
-# APK будет здесь:
-# android/app/build/outputs/apk/debug/app-debug.apk
+# Запуск unit-тестов
+./gradlew :app:testDebugUnitTest
+
+# Установка на подключённое устройство
+./gradlew installDebug
 ```
-
-### Release APK (для Google Play)
-
-```bash
-# Создать keystore (один раз)
-keytool -genkey -v -keystore calculator.keystore \
-  -alias calculator -keyalg RSA -keysize 2048 -validity 10000
-
-# Собрать release
-cd android
-./gradlew assembleRelease
-
-# Подписать APK
-jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
-  -keystore ../calculator.keystore \
-  app/build/outputs/apk/release/app-release-unsigned.apk calculator
-
-# Выровнять
-zipalign -v 4 \
-  app/build/outputs/apk/release/app-release-unsigned.apk \
-  calculator-release.apk
-```
-
----
 
 ## Структура проекта
 
 ```
-ios-calculator/
-├── index.html           ← Главный файл (весь UI + JS)
-├── manifest.json        ← PWA манифест
-├── sw.js               ← Service Worker (офлайн)
-├── capacitor.config.json ← Настройки Capacitor
-├── package.json
-├── README.md
-└── icons/
-    ├── icon-72.png
-    ├── icon-96.png
-    ├── icon-128.png
-    ├── icon-144.png
-    ├── icon-152.png
-    ├── icon-167.png
-    ├── icon-180.png
-    ├── icon-192.png
-    ├── icon-384.png
-    └── icon-512.png
+app/src/main/java/com/example/ioscalculator/
+├── domain/
+│   ├── CalculatorConstants.kt   # Все константы
+│   ├── CalculatorEngine.kt      # Чистая логика (без Android)
+│   └── CalculatorRepository.kt  # Точка расширения
+├── state/
+│   ├── CalculatorEvent.kt       # MVI Intent
+│   └── CalculatorState.kt       # MVI State
+├── viewmodel/
+│   └── CalculatorViewModel.kt   # Редуктор + StateFlow
+├── ui/
+│   ├── CalculatorScreen.kt      # Главный экран
+│   ├── components/
+│   │   ├── CalcButton.kt        # Кнопка с анимацией
+│   │   ├── DisplayPanel.kt      # Дисплей с авто-масштабом
+│   │   └── ButtonGrid.kt        # Портрет + Ландшафт сетки
+│   └── theme/
+│       └── CalcColors.kt        # Цвета iOS-палитры
+├── di/
+│   └── AppModule.kt             # Hilt-модуль
+├── MainActivity.kt
+└── IOSCalculatorApp.kt
 ```
 
----
+## Тестирование граничных случаев
 
-## Установка как PWA на Android
-
-1. Открыть сайт в Chrome на Android
-2. Нажать меню (три точки) → «Добавить на главный экран»
-3. Приложение установится без APK
-
----
+| Действие              | Результат              |
+|-----------------------|------------------------|
+| `5 + 3 × 2 =`        | `16` (не 11!)          |
+| `100 + 10% =`         | `110`                  |
+| `5 ÷ 0 =`            | `Деление на ноль`      |
+| `√(-1)`               | `Домен`                |
+| `0.1 + 0.2 =`         | `0.3`                  |
+| `3 + 5 = = =`         | `8 → 13 → 18`          |
+| Поворот во время ввода | Дисплей сохраняется   |
+| `sin(90°)` в DEG      | `1`                    |
 
 ## Лицензия
 
-MIT
+Проект создан в образовательных целях. Не использует ассеты Apple.
