@@ -14,7 +14,6 @@
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout"
             android:exported="true"
-            android:screenOrientation="fullSensor"
             android:windowSoftInputMode="adjustResize">
 
             <intent-filter>
