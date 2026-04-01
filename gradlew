@@ -16,7 +16,6 @@ while [ -h "$app_path" ]; do
 done
 APP_HOME=$(cd "$(dirname "$app_path")" && pwd)
 
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 # Определяем JAVACMD
@@ -40,7 +39,8 @@ fi
 
 # Запуск Gradle
 exec "$JAVACMD" \
-    $DEFAULT_JVM_OPTS \
+    -Xmx64m \
+    -Xms64m \
     $JAVA_OPTS \
     $GRADLE_OPTS \
     "-Dorg.gradle.appname=$APP_BASE_NAME" \
