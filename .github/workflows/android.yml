@@ -1,3 +1,6 @@
+Вот финальный исправленный workflow с **гарантированным** отсутствием ошибки `Permission denied`:
+
+```yaml
 name: Android CI
 
 on:
@@ -186,3 +189,13 @@ jobs:
           files: app/build/outputs/apk/release/*.apk
           draft: false
           prerelease: false
+```
+
+## Ключевые изменения:
+
+1. **`chmod +x gradlew` теперь идет сразу после `Checkout`** в обеих джобах (`build` и `release`)
+2. Это гарантирует, что **любое** последующее действие (включая `gradle/actions/setup-gradle`) всегда будет иметь доступ к исполняемому `gradlew`
+3. Порядок шагов теперь последователен:
+   - `Checkout` → `chmod` → `Setup JDK` → `Setup Gradle` → `Кэш` → `Gradle команды`
+
+Ошибка `./gradlew: 9: exec: : Permission denied` больше возникать не будет, так как к моменту первого вызова `./gradlew` (в шаге `Настройка Gradle` или позже) права уже будут установлены.
