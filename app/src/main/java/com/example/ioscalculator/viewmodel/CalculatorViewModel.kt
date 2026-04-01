@@ -1,6 +1,3 @@
-Вот полный, готовый к замене файл `CalculatorViewModel.kt`. Все изменения интегрированы в вашу архитектуру без потери существующей логики.
-
-```kotlin
 package com.example.ioscalculator.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -67,7 +64,6 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
     private fun handleDigit(s: Active, digit: String): Active {
         if (s.isError) return s
         val base = if (s.startNewInput || s.currentInput == DISPLAY_ZERO) "" else s.currentInput
-        // Ограничение длины ввода
         if (base.replace("-", "").replace(".", "").length >= INPUT_MAX_LENGTH) return s
         val newInput = base + digit
         return s.copy(
@@ -93,9 +89,8 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun handleClear(s: Active): Active {
-        // AC — полный сброс; C — только текущий операнд
         return if (!s.hasInput && s.pendingOp == null) {
-            Active() // полный сброс
+            Active()
         } else {
             s.copy(
                 currentInput = DISPLAY_ZERO,
@@ -141,20 +136,16 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
     private fun handleOperator(s: Active, op: BinaryOp): Active {
         if (s.isError) return s
         val rhs = currentDouble(s)
-
-        // Если уже есть pending-оп и пользователь не начал новый ввод — вычисляем
         val newAcc = if (s.pendingOp != null && !s.startNewInput) {
             when (val r = CalculatorEngine.applyOperator(s.accumulator, s.pendingOp, rhs)) {
                 is EngineResult.Value -> r.number
                 is EngineResult.Error -> return errorState(s, r.message)
             }
         } else if (s.startNewInput && s.pendingOp != null) {
-            // Повторное нажатие оператора без ввода — меняем оператор, не вычисляем
             return s.copy(pendingOp = op, activeOp = op)
         } else {
             rhs
         }
-
         return s.copy(
             accumulator = newAcc,
             pendingOp = op,
@@ -168,12 +159,9 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
 
     private fun handleEquals(s: Active): Active {
         if (s.isError) return s
-
         val rhs: Double
         val op: BinaryOp
-
         if (s.justEvaluated) {
-            // Повторное = — применяем последний оператор и операнд
             rhs = s.lastRhs ?: currentDouble(s)
             op  = s.lastOp  ?: return s
         } else {
@@ -184,7 +172,6 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
                 startNewInput = true,
             )
         }
-
         return when (val r = CalculatorEngine.applyOperator(s.accumulator, op, rhs)) {
             is EngineResult.Value -> s.copy(
                 accumulator = r.number,
@@ -253,14 +240,12 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         val restoredOp  = s.bracketOps.last()
         val newStack = s.bracketStack.dropLast(1)
         val newOps   = s.bracketOps.dropLast(1)
-
         val newAcc = if (restoredOp != null) {
             when (val r = CalculatorEngine.applyOperator(restoredAcc, restoredOp, innerResult)) {
                 is EngineResult.Value -> r.number
                 is EngineResult.Error -> return errorState(s, r.message)
             }
         } else innerResult
-
         return s.copy(
             accumulator = newAcc,
             bracketStack = newStack,
@@ -279,15 +264,11 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
 
     private fun handleBackspace(s: Active): Active {
         if (s.isError) return s
-        
-        // Если показан готовый результат, делаем его редактируемым
         val rawText = if (s.startNewInput) {
             s.displayText.replace(" ", "").replace(",", ".").removeSuffix(".0")
         } else {
             s.currentInput
         }
-
-        // Защита: если остался 1 символ (или "-"), сбрасываем в 0
         if (rawText.length <= 1) {
             return s.copy(
                 currentInput = DISPLAY_ZERO,
@@ -296,14 +277,12 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
                 hasInput = false
             )
         }
-
         val newInput = rawText.dropLast(1)
         val finalInput = if (newInput == "-" || newInput.isEmpty()) DISPLAY_ZERO else newInput
         val display = finalInput.toDoubleOrNull()
             ?.takeIf { it.isFinite() }
             ?.let { CalculatorEngine.formatForDisplay(it) } 
             ?: finalInput
-
         return s.copy(
             currentInput = finalInput,
             displayText = display,
@@ -316,8 +295,7 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
     // ВСПОМОГАТЕЛЬНЫЕ
     // ─────────────────────────────────────────────────────────────────
 
-    private fun currentDouble(s: Active): Double =
-        s.currentInput.toDoubleOrNull() ?: 0.0
+    private fun currentDouble(s: Active): Double = s.currentInput.toDoubleOrNull() ?: 0.0
 
     private fun errorState(s: Active, message: String): Active =
         s.copy(
@@ -328,17 +306,3 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
             startNewInput = true,
         )
 }
-```
-
-### ⚠️ Важно перед запуском:
-Убедитесь, что в файле, где объявлен `CalculatorEvent` (обычно `state/CalculatorEvent.kt`), добавлены эти три события:
-```kotlin
-sealed interface CalculatorEvent {
-    // ... ваши существующие события ...
-    
-    object Backspace : CalculatorEvent
-    object OpenSettings : CalculatorEvent
-    object OpenHistory : CalculatorEvent
-}
-```
-Без этого компилятор выдаст `Unresolved reference`. Как только добавите их, код выше соберётся и заработает сразу. Файл полностью готов к копированию.
