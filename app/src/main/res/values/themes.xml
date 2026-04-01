@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-        Тема без ActionBar и без Material цветов.
-        Фон — чёрный, статусбар прозрачный (edge-to-edge).
-    -->
-    <style name="Theme.IOSCalculator" parent="android:Theme.Material3.Light.NoActionBar">
+    <style name="Theme.IOSCalculator" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
