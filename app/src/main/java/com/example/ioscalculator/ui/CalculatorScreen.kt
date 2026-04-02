@@ -17,8 +17,10 @@ import com.example.ioscalculator.state.CalculatorEvent
 import com.example.ioscalculator.state.CalculatorState.Active
 import com.example.ioscalculator.ui.components.CalculatorUtilityBar
 import com.example.ioscalculator.ui.components.DisplayPanel
+import com.example.ioscalculator.ui.components.HistoryDialog
 import com.example.ioscalculator.ui.components.LandscapeButtonGrid
 import com.example.ioscalculator.ui.components.PortraitButtonGrid
+import com.example.ioscalculator.ui.components.SettingsDialog
 import com.example.ioscalculator.ui.theme.CalcColors
 import com.example.ioscalculator.viewmodel.CalculatorViewModel
 
@@ -137,6 +139,22 @@ fun CalculatorScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // Диалоги поверх основного контента
+        if (state is Active) {
+            val activeState = state as Active
+            if (activeState.showHistory) {
+                HistoryDialog(
+                    history = activeState.history,
+                    onDismiss = { viewModel.onEvent(CalculatorEvent.OpenHistory) },
+                )
+            }
+            if (activeState.showSettings) {
+                SettingsDialog(
+                    onDismiss = { viewModel.onEvent(CalculatorEvent.OpenSettings) },
+                )
             }
         }
     }

@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.rounded.Backspace
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -28,7 +28,7 @@ fun CalculatorUtilityBar(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onSettingsClick) {
@@ -49,7 +49,7 @@ fun CalculatorUtilityBar(
         }
         IconButton(onClick = onBackspaceClick) {
             Icon(
-                imageVector = Icons.Default.Delete,
+                imageVector = Icons.Rounded.Backspace,
                 contentDescription = "Удалить",
                 modifier = Modifier.size(28.dp),
                 tint = iconTint

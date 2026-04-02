@@ -53,8 +53,8 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         
         // 🔹 Новые события UI
         is Backspace             -> handleBackspace(s)
-        is OpenSettings, 
-        is OpenHistory           -> s // Навигация не меняет состояние калькулятора
+        OpenSettings             -> s.copy(showSettings = !s.showSettings)
+        OpenHistory              -> s.copy(showHistory = !s.showHistory)
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -185,6 +185,7 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
                 lastRhs = rhs,
                 lastOp = op,
                 isError = false,
+                history = s.history + listOf("${CalculatorEngine.formatForDisplay(s.accumulator)} ${op.symbol} ${CalculatorEngine.formatForDisplay(rhs)} = ${CalculatorEngine.formatForDisplay(r.number)}"),
             )
             is EngineResult.Error -> errorState(s, r.message)
         }

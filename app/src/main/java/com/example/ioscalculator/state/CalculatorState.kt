@@ -55,5 +55,12 @@ sealed interface CalculatorState {
 
         // ── Признак ошибки ────────────────────────────────────────
         val isError: Boolean = false,
+
+        // ── История вычислений ───────────────────────────────────
+        val history: List<String> = emptyList(),
+
+        // ── Состояние UI ─────────────────────────────────────────
+        val showHistory: Boolean = false,
+        val showSettings: Boolean = false,
     ) : CalculatorState
 }
