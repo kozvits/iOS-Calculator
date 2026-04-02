@@ -48,48 +48,87 @@ fun CalculatorScreen(
             transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "orientationSwitch",
         ) { landscape ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.Bottom,
-            ) {
-                // 1️⃣ Дисплей (занимает всё свободное место)
-                if (state is Active) {
-                    DisplayPanel(
-                        text = (state as Active).displayText,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(bottom = 8.dp),
-                    )
-                }
+            if (landscape) {
+                // Ландшафтная ориентация: экран сверху, кнопки снизу
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                ) {
+                    // 1️⃣ Дисплей в верхней части
+                    if (state is Active) {
+                        DisplayPanel(
+                            text = (state as Active).displayText,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.3f)
+                                .padding(top = 8.dp, bottom = 8.dp),
+                        )
+                    }
 
-                // 🔹 2️⃣ Панель утилит (фиксированная высота, не сжимается)
-                if (state is Active) {
-                    CalculatorUtilityBar(
-                        onSettingsClick  = { viewModel.onEvent(CalculatorEvent.OpenSettings) },
-                        onHistoryClick   = { viewModel.onEvent(CalculatorEvent.OpenHistory)  },
-                        onBackspaceClick = { viewModel.onEvent(CalculatorEvent.Backspace)    }
-                    )
-                    Spacer(Modifier.height(4.dp))
-                }
+                    // 2️⃣ Панель утилит
+                    if (state is Active) {
+                        CalculatorUtilityBar(
+                            onSettingsClick  = { viewModel.onEvent(CalculatorEvent.OpenSettings) },
+                            onHistoryClick   = { viewModel.onEvent(CalculatorEvent.OpenHistory)  },
+                            onBackspaceClick = { viewModel.onEvent(CalculatorEvent.Backspace)    }
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
 
-                // 3️⃣ Сетка кнопок
-                if (state is Active) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (landscape) {
+                    // 3️⃣ Сетка кнопок
+                    if (state is Active) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.7f),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             LandscapeButtonGrid(
                                 state = state as Active,
                                 buttonSize = buttonSize,
                                 onEvent = viewModel::onEvent,
                             )
-                        } else {
+                        }
+                    }
+                }
+            } else {
+                // Портретная ориентация
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.Bottom,
+                ) {
+                    // 1️⃣ Дисплей (занимает всё свободное место)
+                    if (state is Active) {
+                        DisplayPanel(
+                            text = (state as Active).displayText,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(bottom = 8.dp),
+                        )
+                    }
+
+                    // 🔹 2️⃣ Панель утилит (фиксированная высота, не сжимается)
+                    if (state is Active) {
+                        CalculatorUtilityBar(
+                            onSettingsClick  = { viewModel.onEvent(CalculatorEvent.OpenSettings) },
+                            onHistoryClick   = { viewModel.onEvent(CalculatorEvent.OpenHistory)  },
+                            onBackspaceClick = { viewModel.onEvent(CalculatorEvent.Backspace)    }
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    // 3️⃣ Сетка кнопок
+                    if (state is Active) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             PortraitButtonGrid(
                                 state = state as Active,
                                 buttonSize = buttonSize,
