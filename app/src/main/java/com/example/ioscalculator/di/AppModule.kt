@@ -1,13 +1,19 @@
 package com.example.ioscalculator.di
 
+import com.example.ioscalculator.domain.CalculatorRepository
+import com.example.ioscalculator.domain.InMemoryCalculatorRepository
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
-/**
- * Модуль Hilt — зарезервирован для будущих зависимостей
- * (репозиторий истории, настройки через DataStore и т.д.).
- */
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule
+object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideCalculatorRepository(): CalculatorRepository =
+        InMemoryCalculatorRepository()
+}

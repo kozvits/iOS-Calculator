@@ -1,308 +1,283 @@
 package com.example.ioscalculator.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.ioscalculator.domain.*
-import com.example.ioscalculator.domain.CalculatorConstants.DISPLAY_ZERO
-import com.example.ioscalculator.domain.CalculatorConstants.INPUT_MAX_LENGTH
 import com.example.ioscalculator.state.CalculatorEvent
-import com.example.ioscalculator.state.CalculatorEvent.*
 import com.example.ioscalculator.state.CalculatorState
-import com.example.ioscalculator.state.CalculatorState.Active
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class HistoryEntry(val expression: String, val result: String)
+
+data class CalculatorSettings(
+    val soundEnabled: Boolean = false,
+    val hapticEnabled: Boolean = true,
+    val thousandsSeparator: Boolean = true,
+    val angleMode: AngleMode = AngleMode.RAD,
+    val theme: CalcTheme = CalcTheme.DARK,
+)
+
+enum class CalcTheme { DARK, LIGHT }
 
 @HiltViewModel
 class CalculatorViewModel @Inject constructor() : ViewModel() {
 
-    private val _state = MutableStateFlow<CalculatorState>(Active())
+    private val _state = MutableStateFlow<CalculatorState>(CalculatorState.Active())
     val state: StateFlow<CalculatorState> = _state.asStateFlow()
 
-    /** Единственная точка входа для UI — обработка всех событий. */
+    private val _history = MutableStateFlow<List<HistoryEntry>>(emptyList())
+    val history: StateFlow<List<HistoryEntry>> = _history.asStateFlow()
+
+    private val _settings = MutableStateFlow(CalculatorSettings())
+    val settings: StateFlow<CalculatorSettings> = _settings.asStateFlow()
+
+    private val _showHistory = MutableStateFlow(false)
+    val showHistory: StateFlow<Boolean> = _showHistory.asStateFlow()
+
+    private val _showSettings = MutableStateFlow(false)
+    val showSettings: StateFlow<Boolean> = _showSettings.asStateFlow()
+
     fun onEvent(event: CalculatorEvent) {
-        viewModelScope.launch {
-            _state.update { current ->
-                if (current !is Active) return@update current
-                reduce(current, event)
-            }
+        val current = _state.value as? CalculatorState.Active ?: return
+        when (event) {
+            is CalculatorEvent.DigitPressed      -> handleDigit(current, event.digit)
+            is CalculatorEvent.DecimalPressed     -> handleDecimal(current)
+            is CalculatorEvent.ClearPressed       -> handleClear(current)
+            is CalculatorEvent.NegatePressed      -> handleNegate(current)
+            is CalculatorEvent.PercentPressed     -> handlePercent(current)
+            is CalculatorEvent.OperatorPressed    -> handleOperator(current, event.op)
+            is CalculatorEvent.EqualsPressed      -> handleEquals(current)
+            is CalculatorEvent.ScientificFuncPressed -> handleScientific(current, event.func)
+            is CalculatorEvent.ConstantPressed    -> handleConstant(current, event.constant)
+            is CalculatorEvent.AngleModeChanged   -> updateAngleMode(event.mode)
+            is CalculatorEvent.Backspace          -> handleBackspace(current)
+            is CalculatorEvent.OpenHistory        -> _showHistory.value = !_showHistory.value
+            is CalculatorEvent.OpenSettings       -> _showSettings.value = !_showSettings.value
+            else -> {}
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // РЕДУКТОР
-    // ─────────────────────────────────────────────────────────────────
+    fun dismissHistory()  { _showHistory.value = false }
+    fun dismissSettings() { _showSettings.value = false }
+    fun clearHistory()    { _history.value = emptyList() }
 
-    private fun reduce(s: Active, event: CalculatorEvent): Active = when (event) {
-        is DigitPressed          -> handleDigit(s, event.digit)
-        is DecimalPressed        -> handleDecimal(s)
-        is ClearPressed          -> handleClear(s)
-        is NegatePressed         -> handleNegate(s)
-        is PercentPressed        -> handlePercent(s)
-        is OperatorPressed       -> handleOperator(s, event.op)
-        is EqualsPressed         -> handleEquals(s)
-        is ScientificFuncPressed -> handleScientific(s, event.func)
-        is ConstantPressed       -> handleConstant(s, event.constant)
-        is AngleModeChanged      -> s.copy(angleMode = event.mode)
-        is OpenBracket           -> handleOpenBracket(s)
-        is CloseBracket          -> handleCloseBracket(s)
-        
-        // 🔹 Новые события UI
-        is Backspace             -> handleBackspace(s)
-        is OpenSettings, 
-        is OpenHistory           -> s // Навигация не меняет состояние калькулятора
+    fun updateSettings(new: CalculatorSettings) {
+        _settings.value = new
+        // Синхронизируем angleMode в состояние калькулятора
+        _state.update { s ->
+            (s as? CalculatorState.Active)?.copy(angleMode = new.angleMode) ?: s
+        }
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ОБРАБОТЧИКИ ВВОДА
-    // ─────────────────────────────────────────────────────────────────
-
-    private fun handleDigit(s: Active, digit: String): Active {
-        if (s.isError) return s
-        val base = if (s.startNewInput || s.currentInput == DISPLAY_ZERO) "" else s.currentInput
-        if (base.replace("-", "").replace(".", "").length >= INPUT_MAX_LENGTH) return s
-        val newInput = base + digit
-        return s.copy(
-            currentInput = newInput,
-            displayText = CalculatorEngine.formatForDisplay(newInput.toDoubleOrNull() ?: 0.0),
+    // ── Digit ────────────────────────────────────────────────────────────────
+    private fun handleDigit(s: CalculatorState.Active, digit: String) {
+        val maxLen = CalculatorConstants.INPUT_MAX_LENGTH
+        val newInput = when {
+            s.startNewInput || s.justEvaluated -> digit
+            s.currentInput == "0"              -> digit
+            s.currentInput.replace("-", "").replace(".", "").length >= maxLen -> return
+            else -> s.currentInput + digit
+        }
+        _state.value = s.copy(
+            currentInput  = newInput,
+            displayText   = formatInput(newInput),
             startNewInput = false,
-            hasInput = true,
-            activeOp = s.activeOp,
+            justEvaluated = false,
+            hasInput      = true,
+            activeOp      = if (s.startNewInput) s.activeOp else null,
         )
     }
 
-    private fun handleDecimal(s: Active): Active {
-        if (s.isError) return s
-        val base = if (s.startNewInput) "0" else s.currentInput
-        if (base.contains('.')) return s
-        val newInput = "$base."
-        return s.copy(
-            currentInput = newInput,
-            displayText = newInput,
+    // ── Decimal ──────────────────────────────────────────────────────────────
+    private fun handleDecimal(s: CalculatorState.Active) {
+        val input = if (s.startNewInput || s.justEvaluated) "0." else {
+            if (s.currentInput.contains('.')) return
+            s.currentInput + "."
+        }
+        _state.value = s.copy(
+            currentInput  = input,
+            displayText   = formatInput(input),
             startNewInput = false,
-            hasInput = true,
+            justEvaluated = false,
+            hasInput      = true,
         )
     }
 
-    private fun handleClear(s: Active): Active {
-        return if (!s.hasInput && s.pendingOp == null) {
-            Active()
-        } else {
+    // ── Clear (AC / C) ───────────────────────────────────────────────────────
+    private fun handleClear(s: CalculatorState.Active) {
+        _state.value = if (s.hasInput && !s.startNewInput) {
             s.copy(
-                currentInput = DISPLAY_ZERO,
-                displayText = DISPLAY_ZERO,
-                hasInput = false,
+                currentInput  = "0",
+                displayText   = "0",
+                hasInput      = false,
                 startNewInput = true,
-                isError = false,
             )
-        }
-    }
-
-    private fun handleNegate(s: Active): Active {
-        if (s.isError) return s
-        val current = currentDouble(s)
-        return when (val r = CalculatorEngine.negate(current)) {
-            is EngineResult.Value -> s.copy(
-                currentInput = r.number.toString(),
-                displayText = CalculatorEngine.formatForDisplay(r.number),
-                accumulator = if (s.startNewInput) r.number else s.accumulator,
-            )
-            is EngineResult.Error -> errorState(s, r.message)
-        }
-    }
-
-    private fun handlePercent(s: Active): Active {
-        if (s.isError) return s
-        val value = currentDouble(s)
-        val context = if (s.pendingOp != null) s.accumulator else null
-        return when (val r = CalculatorEngine.applyPercent(value, context)) {
-            is EngineResult.Value -> s.copy(
-                currentInput = r.number.toString(),
-                displayText = CalculatorEngine.formatForDisplay(r.number),
-                startNewInput = false,
-            )
-            is EngineResult.Error -> errorState(s, r.message)
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // ОПЕРАТОРЫ
-    // ─────────────────────────────────────────────────────────────────
-
-    private fun handleOperator(s: Active, op: BinaryOp): Active {
-        if (s.isError) return s
-        val rhs = currentDouble(s)
-        val newAcc = if (s.pendingOp != null && !s.startNewInput) {
-            when (val r = CalculatorEngine.applyOperator(s.accumulator, s.pendingOp, rhs)) {
-                is EngineResult.Value -> r.number
-                is EngineResult.Error -> return errorState(s, r.message)
-            }
-        } else if (s.startNewInput && s.pendingOp != null) {
-            return s.copy(pendingOp = op, activeOp = op)
         } else {
-            rhs
+            CalculatorState.Active(angleMode = s.angleMode)
         }
-        return s.copy(
-            accumulator = newAcc,
-            pendingOp = op,
-            activeOp = op,
-            displayText = CalculatorEngine.formatForDisplay(newAcc),
+    }
+
+    // ── Negate ───────────────────────────────────────────────────────────────
+    private fun handleNegate(s: CalculatorState.Active) {
+        val value = s.currentInput.toDoubleOrNull() ?: return
+        val result = CalculatorEngine.negate(value)
+        if (result is EngineResult.Value) {
+            val newInput = formatRaw(result.number)
+            _state.value = s.copy(
+                currentInput = newInput,
+                displayText  = formatInput(newInput),
+            )
+        }
+    }
+
+    // ── Percent ──────────────────────────────────────────────────────────────
+    private fun handlePercent(s: CalculatorState.Active) {
+        val value = s.currentInput.toDoubleOrNull() ?: return
+        val ctx   = if (s.pendingOp != null) s.accumulator else null
+        val result = CalculatorEngine.applyPercent(value, ctx)
+        if (result is EngineResult.Value) {
+            val newInput = formatRaw(result.number)
+            _state.value = s.copy(
+                currentInput = newInput,
+                displayText  = formatInput(newInput),
+            )
+        }
+    }
+
+    // ── Operator ─────────────────────────────────────────────────────────────
+    private fun handleOperator(s: CalculatorState.Active, op: BinaryOp) {
+        val current = s.currentInput.toDoubleOrNull() ?: 0.0
+        val newAccumulator = if (s.pendingOp != null && !s.startNewInput && !s.justEvaluated) {
+            val r = CalculatorEngine.applyOperator(s.accumulator, s.pendingOp, current)
+            if (r is EngineResult.Error) { showError(s, r.message); return }
+            (r as EngineResult.Value).number
+        } else current
+        _state.value = s.copy(
+            accumulator   = newAccumulator,
+            pendingOp     = op,
+            activeOp      = op,
+            displayText   = CalculatorEngine.formatForDisplay(newAccumulator),
             startNewInput = true,
-            hasInput = false,
             justEvaluated = false,
         )
     }
 
-    private fun handleEquals(s: Active): Active {
-        if (s.isError) return s
-        val rhs: Double
-        val op: BinaryOp
-        if (s.justEvaluated) {
-            rhs = s.lastRhs ?: currentDouble(s)
-            op  = s.lastOp  ?: return s
-        } else {
-            rhs = currentDouble(s)
-            op  = s.pendingOp ?: return s.copy(
-                justEvaluated = true,
-                lastRhs = currentDouble(s),
-                startNewInput = true,
-            )
-        }
-        return when (val r = CalculatorEngine.applyOperator(s.accumulator, op, rhs)) {
-            is EngineResult.Value -> s.copy(
-                accumulator = r.number,
-                currentInput = r.number.toString(),
-                displayText = CalculatorEngine.formatForDisplay(r.number),
-                pendingOp = null,
-                activeOp = null,
-                startNewInput = true,
-                hasInput = false,
-                justEvaluated = true,
-                lastRhs = rhs,
-                lastOp = op,
-                isError = false,
-            )
-            is EngineResult.Error -> errorState(s, r.message)
-        }
+    // ── Equals ───────────────────────────────────────────────────────────────
+    private fun handleEquals(s: CalculatorState.Active) {
+        val op  = s.pendingOp ?: s.lastOp ?: return
+        val rhs = if (s.justEvaluated) s.lastRhs ?: 0.0
+                  else s.currentInput.toDoubleOrNull() ?: 0.0
+        val lhs = if (s.justEvaluated) s.accumulator
+                  else s.accumulator
+
+        val result = CalculatorEngine.applyOperator(lhs, op, rhs)
+        if (result is EngineResult.Error) { showError(s, result.message); return }
+        val value = (result as EngineResult.Value).number
+
+        // Записываем в историю
+        val exprLhs = CalculatorEngine.formatForDisplay(lhs)
+        val exprRhs = CalculatorEngine.formatForDisplay(rhs)
+        val exprStr = "$exprLhs ${op.symbol} $exprRhs"
+        val resStr  = CalculatorEngine.formatForDisplay(value)
+        addHistory(exprStr, resStr)
+
+        _state.value = s.copy(
+            accumulator   = value,
+            displayText   = resStr,
+            currentInput  = formatRaw(value),
+            pendingOp     = null,
+            activeOp      = null,
+            lastOp        = op,
+            lastRhs       = rhs,
+            startNewInput = true,
+            justEvaluated = true,
+            hasInput      = false,
+        )
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // НАУЧНЫЙ РЕЖИМ
-    // ─────────────────────────────────────────────────────────────────
-
-    private fun handleScientific(s: Active, func: ScientificFunc): Active {
-        if (s.isError) return s
-        val value = currentDouble(s)
-        return when (val r = CalculatorEngine.applyScientific(func, value, s.angleMode)) {
-            is EngineResult.Value -> s.copy(
-                currentInput = r.number.toString(),
-                displayText = CalculatorEngine.formatForDisplay(r.number),
-                accumulator = r.number,
-                startNewInput = true,
-                hasInput = false,
-                justEvaluated = true,
-            )
-            is EngineResult.Error -> errorState(s, r.message)
-        }
+    // ── Scientific ───────────────────────────────────────────────────────────
+    private fun handleScientific(s: CalculatorState.Active, func: ScientificFunc) {
+        val value = s.currentInput.toDoubleOrNull() ?: return
+        val result = CalculatorEngine.applyScientific(func, value, s.angleMode)
+        if (result is EngineResult.Error) { showError(s, result.message); return }
+        val v = (result as EngineResult.Value).number
+        val newInput = formatRaw(v)
+        _state.value = s.copy(
+            currentInput  = newInput,
+            displayText   = CalculatorEngine.formatForDisplay(v),
+            startNewInput = true,
+            justEvaluated = false,
+        )
     }
 
-    private fun handleConstant(s: Active, c: CalculatorConstantValue): Active {
+    // ── Constant ─────────────────────────────────────────────────────────────
+    private fun handleConstant(s: CalculatorState.Active, c: CalculatorConstantValue) {
         val v = CalculatorEngine.constant(c)
-        return s.copy(
-            currentInput = v.toString(),
-            displayText = CalculatorEngine.formatForDisplay(v),
-            startNewInput = false,
-            hasInput = true,
-        )
-    }
-
-    private fun handleOpenBracket(s: Active): Active {
-        return s.copy(
-            bracketStack = s.bracketStack + s.accumulator,
-            bracketOps = s.bracketOps + s.pendingOp,
-            accumulator = 0.0,
-            pendingOp = null,
-            currentInput = DISPLAY_ZERO,
-            displayText = DISPLAY_ZERO,
-            startNewInput = false,
-            hasInput = false,
-        )
-    }
-
-    private fun handleCloseBracket(s: Active): Active {
-        if (s.bracketStack.isEmpty()) return s
-        val innerResult = currentDouble(s)
-        val restoredAcc = s.bracketStack.last()
-        val restoredOp  = s.bracketOps.last()
-        val newStack = s.bracketStack.dropLast(1)
-        val newOps   = s.bracketOps.dropLast(1)
-        val newAcc = if (restoredOp != null) {
-            when (val r = CalculatorEngine.applyOperator(restoredAcc, restoredOp, innerResult)) {
-                is EngineResult.Value -> r.number
-                is EngineResult.Error -> return errorState(s, r.message)
-            }
-        } else innerResult
-        return s.copy(
-            accumulator = newAcc,
-            bracketStack = newStack,
-            bracketOps = newOps,
-            pendingOp = null,
-            currentInput = newAcc.toString(),
-            displayText = CalculatorEngine.formatForDisplay(newAcc),
+        val newInput = formatRaw(v)
+        _state.value = s.copy(
+            currentInput  = newInput,
+            displayText   = CalculatorEngine.formatForDisplay(v),
             startNewInput = true,
-            hasInput = false,
+            hasInput      = true,
         )
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // BACKSPACE (Новое)
-    // ─────────────────────────────────────────────────────────────────
-
-    private fun handleBackspace(s: Active): Active {
-        if (s.isError) return s
-        val rawText = if (s.startNewInput) {
-            s.displayText.replace(" ", "").replace(",", ".").removeSuffix(".0")
-        } else {
-            s.currentInput
+    // ── Backspace ────────────────────────────────────────────────────────────
+    private fun handleBackspace(s: CalculatorState.Active) {
+        if (s.startNewInput || s.justEvaluated) return
+        val newInput = when {
+            s.currentInput.length <= 1 -> "0"
+            else -> s.currentInput.dropLast(1)
         }
-        if (rawText.length <= 1) {
-            return s.copy(
-                currentInput = DISPLAY_ZERO,
-                displayText = DISPLAY_ZERO,
-                startNewInput = true,
-                hasInput = false
-            )
-        }
-        val newInput = rawText.dropLast(1)
-        val finalInput = if (newInput == "-" || newInput.isEmpty()) DISPLAY_ZERO else newInput
-        val display = finalInput.toDoubleOrNull()
-            ?.takeIf { it.isFinite() }
-            ?.let { CalculatorEngine.formatForDisplay(it) } 
-            ?: finalInput
-        return s.copy(
-            currentInput = finalInput,
-            displayText = display,
-            startNewInput = false,
-            hasInput = finalInput != DISPLAY_ZERO
+        _state.value = s.copy(
+            currentInput = newInput,
+            displayText  = formatInput(newInput),
+            hasInput     = newInput != "0",
         )
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ВСПОМОГАТЕЛЬНЫЕ
-    // ─────────────────────────────────────────────────────────────────
+    // ── AngleMode ────────────────────────────────────────────────────────────
+    private fun updateAngleMode(mode: AngleMode) {
+        _settings.update { it.copy(angleMode = mode) }
+        _state.update { s -> (s as? CalculatorState.Active)?.copy(angleMode = mode) ?: s }
+    }
 
-    private fun currentDouble(s: Active): Double = s.currentInput.toDoubleOrNull() ?: 0.0
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    private fun showError(s: CalculatorState.Active, msg: String) {
+        _state.value = s.copy(displayText = msg, isError = true, hasInput = false)
+    }
 
-    private fun errorState(s: Active, message: String): Active =
-        s.copy(
-            displayText = message,
-            isError = true,
-            pendingOp = null,
-            activeOp = null,
-            startNewInput = true,
-        )
+    private fun addHistory(expression: String, result: String) {
+        _history.update { list ->
+            listOf(HistoryEntry(expression, result)) + list.take(99)
+        }
+    }
+
+    /** Форматирует строку ввода для дисплея: добавляет разделители тысяч. */
+    private fun formatInput(input: String): String {
+        if (input.endsWith('.')) return input
+        val d = input.toDoubleOrNull() ?: return input
+        if (input.contains('.')) {
+            val intPart = input.substringBefore('.')
+            val fracPart = input.substringAfter('.')
+            return formatIntPart(intPart) + "." + fracPart
+        }
+        return formatIntPart(input)
+    }
+
+    private fun formatIntPart(intStr: String): String {
+        val neg = intStr.startsWith('-')
+        val digits = if (neg) intStr.drop(1) else intStr
+        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
+        return if (neg) "-$grouped" else grouped
+    }
+
+    private fun formatRaw(v: Double): String {
+        if (v == kotlin.math.floor(v) && kotlin.math.abs(v) < 1e15) return v.toLong().toString()
+        return v.toBigDecimal().stripTrailingZeros().toPlainString()
+    }
 }
