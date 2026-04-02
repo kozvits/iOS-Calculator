@@ -10,10 +10,10 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -23,8 +23,8 @@ fun CalculatorUtilityBar(
     onBackspaceClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Адаптивный приглушённый цвет (не зависит от CalcColors)
-    val iconTint = LocalContentColor.current.copy(alpha = 0.6f)
+    // 🔧 Жесткий видимый цвет (серый, как в iOS-калькуляторе)
+    val iconTint = Color(0xFF999999)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -35,7 +35,7 @@ fun CalculatorUtilityBar(
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Настройки",
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(28.dp),
                 tint = iconTint
             )
         }
@@ -43,16 +43,15 @@ fun CalculatorUtilityBar(
             Icon(
                 imageVector = Icons.Default.History,
                 contentDescription = "История",
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(28.dp),
                 tint = iconTint
             )
         }
         IconButton(onClick = onBackspaceClick) {
-            // Delete есть в material-icons-core, работает сразу
             Icon(
                 imageVector = Icons.Default.Delete,
                 contentDescription = "Удалить",
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(28.dp),
                 tint = iconTint
             )
         }
