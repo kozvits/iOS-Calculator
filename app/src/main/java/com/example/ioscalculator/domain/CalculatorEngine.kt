@@ -179,7 +179,7 @@ object CalculatorEngine {
         val fracPart = if (dotIdx >= 0) s.substring(dotIdx) else ""
         val negative = intPart.startsWith('-')
         val digits = if (negative) intPart.drop(1) else intPart
-        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
+        val grouped = digits.reversed().chunked(3).joinToString("'").reversed()
         return (if (negative) "-" else "") + grouped + fracPart
     }
 
