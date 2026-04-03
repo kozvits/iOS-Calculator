@@ -16,7 +16,6 @@ data class HistoryEntry(val expression: String, val result: String)
 data class CalculatorSettings(
     val soundEnabled: Boolean = false,
     val hapticEnabled: Boolean = true,
-    val thousandsSeparator: Boolean = true,
     val angleMode: AngleMode = AngleMode.RAD,
     val theme: CalcTheme = CalcTheme.DARK,
 )
@@ -44,19 +43,21 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
     fun onEvent(event: CalculatorEvent) {
         val current = _state.value as? CalculatorState.Active ?: return
         when (event) {
-            is CalculatorEvent.DigitPressed      -> handleDigit(current, event.digit)
-            is CalculatorEvent.DecimalPressed     -> handleDecimal(current)
-            is CalculatorEvent.ClearPressed       -> handleClear(current)
-            is CalculatorEvent.NegatePressed      -> handleNegate(current)
-            is CalculatorEvent.PercentPressed     -> handlePercent(current)
-            is CalculatorEvent.OperatorPressed    -> handleOperator(current, event.op)
-            is CalculatorEvent.EqualsPressed      -> handleEquals(current)
-            is CalculatorEvent.ScientificFuncPressed -> handleScientific(current, event.func)
-            is CalculatorEvent.ConstantPressed    -> handleConstant(current, event.constant)
-            is CalculatorEvent.AngleModeChanged   -> updateAngleMode(event.mode)
-            is CalculatorEvent.Backspace          -> handleBackspace(current)
-            is CalculatorEvent.OpenHistory        -> _showHistory.value = !_showHistory.value
-            is CalculatorEvent.OpenSettings       -> _showSettings.value = !_showSettings.value
+            is CalculatorEvent.DigitPressed          -> handleDigit(current, event.digit)
+            is CalculatorEvent.DecimalPressed         -> handleDecimal(current)
+            is CalculatorEvent.ClearPressed           -> handleClear(current)
+            is CalculatorEvent.NegatePressed          -> handleNegate(current)
+            is CalculatorEvent.PercentPressed         -> handlePercent(current)
+            is CalculatorEvent.OperatorPressed        -> handleOperator(current, event.op)
+            is CalculatorEvent.EqualsPressed          -> handleEquals(current)
+            is CalculatorEvent.ScientificFuncPressed  -> handleScientific(current, event.func)
+            is CalculatorEvent.ConstantPressed        -> handleConstant(current, event.constant)
+            is CalculatorEvent.AngleModeChanged       -> updateAngleMode(event.mode)
+            is CalculatorEvent.OpenBracket            -> handleOpenBracket(current)
+            is CalculatorEvent.CloseBracket           -> handleCloseBracket(current)
+            is CalculatorEvent.Backspace              -> handleBackspace(current)
+            is CalculatorEvent.OpenHistory            -> _showHistory.value = !_showHistory.value
+            is CalculatorEvent.OpenSettings           -> _showSettings.value = !_showSettings.value
             else -> {}
         }
     }
@@ -67,7 +68,6 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
 
     fun updateSettings(new: CalculatorSettings) {
         _settings.value = new
-        // Синхронизируем angleMode в состояние калькулятора
         _state.update { s ->
             (s as? CalculatorState.Active)?.copy(angleMode = new.angleMode) ?: s
         }
@@ -79,16 +79,29 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         val newInput = when {
             s.startNewInput || s.justEvaluated -> digit
             s.currentInput == "0"              -> digit
-            s.currentInput.replace("-", "").replace(".", "").length >= maxLen -> return
+            s.currentInput.replace("-","").replace(".","").length >= maxLen -> return
             else -> s.currentInput + digit
         }
+        // Обновляем выражение: если начинаем после оператора — просто добавляем цифру
+        val newExpr = when {
+            s.justEvaluated -> digit                     // после = начинаем заново
+            s.startNewInput -> s.expressionText + digit  // после оператора — продолжаем
+            s.expressionText.isEmpty() -> digit
+            else -> {
+                // Заменяем последний операнд в выражении
+                val lastOpIdx = lastOperatorIndex(s.expressionText)
+                if (lastOpIdx < 0) newInput
+                else s.expressionText.substring(0, lastOpIdx + 1) + newInput
+            }
+        }
         _state.value = s.copy(
-            currentInput  = newInput,
-            displayText   = formatInput(newInput),
-            startNewInput = false,
-            justEvaluated = false,
-            hasInput      = true,
-            activeOp      = if (s.startNewInput) s.activeOp else null,
+            currentInput   = newInput,
+            displayText    = newInput,
+            expressionText = newExpr,
+            startNewInput  = false,
+            justEvaluated  = false,
+            hasInput       = true,
+            activeOp       = if (s.startNewInput) s.activeOp else null,
         )
     }
 
@@ -98,12 +111,23 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
             if (s.currentInput.contains('.')) return
             s.currentInput + "."
         }
+        val newExpr = when {
+            s.justEvaluated -> "0."
+            s.startNewInput -> s.expressionText + "0."
+            s.expressionText.isEmpty() -> "0."
+            else -> {
+                val lastOpIdx = lastOperatorIndex(s.expressionText)
+                if (lastOpIdx < 0) input
+                else s.expressionText.substring(0, lastOpIdx + 1) + input
+            }
+        }
         _state.value = s.copy(
-            currentInput  = input,
-            displayText   = formatInput(input),
-            startNewInput = false,
-            justEvaluated = false,
-            hasInput      = true,
+            currentInput   = input,
+            displayText    = input,
+            expressionText = newExpr,
+            startNewInput  = false,
+            justEvaluated  = false,
+            hasInput       = true,
         )
     }
 
@@ -111,10 +135,11 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
     private fun handleClear(s: CalculatorState.Active) {
         _state.value = if (s.hasInput && !s.startNewInput) {
             s.copy(
-                currentInput  = "0",
-                displayText   = "0",
-                hasInput      = false,
-                startNewInput = true,
+                currentInput   = "0",
+                displayText    = "0",
+                expressionText = "",
+                hasInput       = false,
+                startNewInput  = true,
             )
         } else {
             CalculatorState.Active(angleMode = s.angleMode)
@@ -127,9 +152,18 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         val result = CalculatorEngine.negate(value)
         if (result is EngineResult.Value) {
             val newInput = formatRaw(result.number)
+            val newExpr = when {
+                s.expressionText.isEmpty() -> newInput
+                else -> {
+                    val lastOpIdx = lastOperatorIndex(s.expressionText)
+                    if (lastOpIdx < 0) newInput
+                    else s.expressionText.substring(0, lastOpIdx + 1) + newInput
+                }
+            }
             _state.value = s.copy(
-                currentInput = newInput,
-                displayText  = formatInput(newInput),
+                currentInput   = newInput,
+                displayText    = newInput,
+                expressionText = newExpr,
             )
         }
     }
@@ -141,9 +175,18 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         val result = CalculatorEngine.applyPercent(value, ctx)
         if (result is EngineResult.Value) {
             val newInput = formatRaw(result.number)
+            val newExpr = when {
+                s.expressionText.isEmpty() -> newInput
+                else -> {
+                    val lastOpIdx = lastOperatorIndex(s.expressionText)
+                    if (lastOpIdx < 0) newInput
+                    else s.expressionText.substring(0, lastOpIdx + 1) + newInput
+                }
+            }
             _state.value = s.copy(
-                currentInput = newInput,
-                displayText  = formatInput(newInput),
+                currentInput   = newInput,
+                displayText    = newInput,
+                expressionText = newExpr,
             )
         }
     }
@@ -156,13 +199,30 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
             if (r is EngineResult.Error) { showError(s, r.message); return }
             (r as EngineResult.Value).number
         } else current
+
+        // Добавляем символ оператора в выражение
+        val opSymbol = " ${op.symbol} "
+        val newExpr = when {
+            s.justEvaluated ->
+                // После = начинаем с результата
+                formatRaw(newAccumulator) + opSymbol
+            s.startNewInput ->
+                // Заменяем последний оператор если уже стоит
+                s.expressionText.trimEnd() + opSymbol
+            s.expressionText.isEmpty() ->
+                formatRaw(newAccumulator) + opSymbol
+            else ->
+                s.expressionText + opSymbol
+        }
+
         _state.value = s.copy(
-            accumulator   = newAccumulator,
-            pendingOp     = op,
-            activeOp      = op,
-            displayText   = CalculatorEngine.formatForDisplay(newAccumulator),
-            startNewInput = true,
-            justEvaluated = false,
+            accumulator    = newAccumulator,
+            pendingOp      = op,
+            activeOp       = op,
+            displayText    = formatRaw(newAccumulator),
+            expressionText = newExpr,
+            startNewInput  = true,
+            justEvaluated  = false,
         )
     }
 
@@ -171,31 +231,53 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         val op  = s.pendingOp ?: s.lastOp ?: return
         val rhs = if (s.justEvaluated) s.lastRhs ?: 0.0
                   else s.currentInput.toDoubleOrNull() ?: 0.0
-        val lhs = if (s.justEvaluated) s.accumulator
-                  else s.accumulator
+        val lhs = s.accumulator
 
         val result = CalculatorEngine.applyOperator(lhs, op, rhs)
         if (result is EngineResult.Error) { showError(s, result.message); return }
         val value = (result as EngineResult.Value).number
+        val resStr = formatRaw(value)
+
+        // Полное выражение для верхней строки: "3 + 5 ="
+        val fullExpr = when {
+            s.justEvaluated -> "${formatRaw(lhs)} ${op.symbol} ${formatRaw(rhs)} ="
+            s.expressionText.isNotEmpty() -> s.expressionText.trimEnd() + " ="
+            else -> "${formatRaw(lhs)} ${op.symbol} ${formatRaw(rhs)} ="
+        }
 
         // Записываем в историю
-        val exprLhs = CalculatorEngine.formatForDisplay(lhs)
-        val exprRhs = CalculatorEngine.formatForDisplay(rhs)
-        val exprStr = "$exprLhs ${op.symbol} $exprRhs"
-        val resStr  = CalculatorEngine.formatForDisplay(value)
-        addHistory(exprStr, resStr)
+        addHistory(fullExpr.removeSuffix(" ="), resStr)
 
         _state.value = s.copy(
-            accumulator   = value,
-            displayText   = resStr,
-            currentInput  = formatRaw(value),
-            pendingOp     = null,
-            activeOp      = null,
-            lastOp        = op,
-            lastRhs       = rhs,
-            startNewInput = true,
-            justEvaluated = true,
-            hasInput      = false,
+            accumulator    = value,
+            displayText    = resStr,
+            currentInput   = resStr,
+            expressionText = fullExpr,   // верхняя строка показывает выражение
+            pendingOp      = null,
+            activeOp       = null,
+            lastOp         = op,
+            lastRhs        = rhs,
+            startNewInput  = true,
+            justEvaluated  = true,
+            hasInput       = false,
+        )
+    }
+
+    // ── Brackets ─────────────────────────────────────────────────────────────
+    private fun handleOpenBracket(s: CalculatorState.Active) {
+        val newExpr = if (s.expressionText.isEmpty()) "(" else s.expressionText + "("
+        _state.value = s.copy(
+            expressionText = newExpr,
+            displayText    = newExpr,
+            startNewInput  = true,
+        )
+    }
+
+    private fun handleCloseBracket(s: CalculatorState.Active) {
+        val newExpr = s.expressionText + ")"
+        _state.value = s.copy(
+            expressionText = newExpr,
+            displayText    = s.currentInput,
         )
     }
 
@@ -206,23 +288,41 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         if (result is EngineResult.Error) { showError(s, result.message); return }
         val v = (result as EngineResult.Value).number
         val newInput = formatRaw(v)
+        val funcExpr = "${func.label}(${formatRaw(value)})"
+        val newExpr = when {
+            s.expressionText.isEmpty() -> funcExpr
+            s.startNewInput -> s.expressionText + funcExpr
+            else -> {
+                val lastOpIdx = lastOperatorIndex(s.expressionText)
+                if (lastOpIdx < 0) funcExpr
+                else s.expressionText.substring(0, lastOpIdx + 1) + funcExpr
+            }
+        }
         _state.value = s.copy(
-            currentInput  = newInput,
-            displayText   = CalculatorEngine.formatForDisplay(v),
-            startNewInput = true,
-            justEvaluated = false,
+            currentInput   = newInput,
+            displayText    = newInput,
+            expressionText = newExpr,
+            startNewInput  = true,
+            justEvaluated  = false,
         )
     }
 
     // ── Constant ─────────────────────────────────────────────────────────────
     private fun handleConstant(s: CalculatorState.Active, c: CalculatorConstantValue) {
         val v = CalculatorEngine.constant(c)
+        val label = if (c == CalculatorConstantValue.PI) "π" else "e"
         val newInput = formatRaw(v)
+        val newExpr = when {
+            s.expressionText.isEmpty() -> label
+            s.startNewInput -> s.expressionText + label
+            else -> label
+        }
         _state.value = s.copy(
-            currentInput  = newInput,
-            displayText   = CalculatorEngine.formatForDisplay(v),
-            startNewInput = true,
-            hasInput      = true,
+            currentInput   = newInput,
+            displayText    = newInput,
+            expressionText = newExpr,
+            startNewInput  = true,
+            hasInput       = true,
         )
     }
 
@@ -233,10 +333,19 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
             s.currentInput.length <= 1 -> "0"
             else -> s.currentInput.dropLast(1)
         }
+        val newExpr = when {
+            s.expressionText.isEmpty() -> ""
+            else -> {
+                val lastOpIdx = lastOperatorIndex(s.expressionText)
+                if (lastOpIdx < 0) newInput
+                else s.expressionText.substring(0, lastOpIdx + 1) + newInput
+            }
+        }
         _state.value = s.copy(
-            currentInput = newInput,
-            displayText  = formatInput(newInput),
-            hasInput     = newInput != "0",
+            currentInput   = newInput,
+            displayText    = newInput,
+            expressionText = newExpr,
+            hasInput       = newInput != "0",
         )
     }
 
@@ -248,7 +357,12 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     private fun showError(s: CalculatorState.Active, msg: String) {
-        _state.value = s.copy(displayText = msg, isError = true, hasInput = false)
+        _state.value = s.copy(
+            displayText    = msg,
+            expressionText = s.expressionText,
+            isError        = true,
+            hasInput       = false,
+        )
     }
 
     private fun addHistory(expression: String, result: String) {
@@ -257,27 +371,21 @@ class CalculatorViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    /** Форматирует строку ввода для дисплея: добавляет разделители тысяч. */
-    private fun formatInput(input: String): String {
-        if (input.endsWith('.')) return input
-        val d = input.toDoubleOrNull() ?: return input
-        if (input.contains('.')) {
-            val intPart = input.substringBefore('.')
-            val fracPart = input.substringAfter('.')
-            return formatIntPart(intPart) + "." + fracPart
-        }
-        return formatIntPart(input)
-    }
-
-    private fun formatIntPart(intStr: String): String {
-        val neg = intStr.startsWith('-')
-        val digits = if (neg) intStr.drop(1) else intStr
-        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
-        return if (neg) "-$grouped" else grouped
-    }
-
     private fun formatRaw(v: Double): String {
         if (v == kotlin.math.floor(v) && kotlin.math.abs(v) < 1e15) return v.toLong().toString()
         return v.toBigDecimal().stripTrailingZeros().toPlainString()
+    }
+
+    /**
+     * Возвращает индекс последнего оператора (+, −, ×, ÷) в строке выражения.
+     * Пропускает символы внутри скобок.
+     */
+    private fun lastOperatorIndex(expr: String): Int {
+        val ops = setOf('+', '−', '×', '÷', ' ')
+        for (i in expr.indices.reversed()) {
+            val c = expr[i]
+            if (c in ops && i > 0) return i
+        }
+        return -1
     }
 }

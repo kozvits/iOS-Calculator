@@ -161,26 +161,47 @@ private fun TopIconRow(onEvent: (CalculatorEvent) -> Unit) {
 
 @Composable
 private fun PortraitDisplay(state: CalculatorState.Active) {
-    val fontSize = when {
+    val mainFontSize = when {
         state.displayText.length > 11 -> 44.sp
         state.displayText.length > 8  -> 60.sp
         state.displayText.length > 6  -> 72.sp
         else -> 88.sp
     }
-    Box(
+    Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 4.dp),
-        contentAlignment = Alignment.BottomEnd
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.Bottom,
     ) {
+        // Верхняя строка — выражение (появляется при наличии)
+        AnimatedVisibility(
+            visible = state.expressionText.isNotEmpty(),
+            enter = fadeIn() + slideInVertically { -it / 2 },
+            exit  = fadeOut(),
+        ) {
+            Text(
+                text = state.expressionText,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.W300,
+                color = ColorSubtext,
+                textAlign = TextAlign.End,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        // Нижняя строка — текущее число / результат
         Text(
             text = state.displayText,
-            fontSize = fontSize,
+            fontSize = mainFontSize,
             fontWeight = FontWeight.W200,
             color = ColorDisplay,
             textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -252,7 +273,7 @@ private fun LandscapeLayout(
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         // Всего 6 рядов кнопок + дисплей (44dp) + отступы
-        val displayH = 44.dp
+        val displayH = 56.dp
         val totalGaps = gap * 7 // 6 рядов = 7 промежутков (включая под дисплеем)
         val btnH = (maxHeight - displayH - totalGaps) / 6
 
@@ -397,29 +418,43 @@ private fun LandBtn(
 }
 
 @Composable
-private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 44.dp) {
-    val fontSize = when {
-        state.displayText.length > 12 -> 18.sp
-        state.displayText.length > 9  -> 22.sp
-        state.displayText.length > 6  -> 28.sp
-        else -> 34.sp
+private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 56.dp) {
+    val mainFontSize = when {
+        state.displayText.length > 12 -> 16.sp
+        state.displayText.length > 9  -> 20.sp
+        state.displayText.length > 6  -> 24.sp
+        else -> 28.sp
     }
-    Box(
+    Column(
         Modifier
             .fillMaxWidth()
             .height(height)
             .background(Color(0xFF1C1C1E), RoundedCornerShape(10.dp))
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        contentAlignment = Alignment.CenterEnd
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.SpaceEvenly,
     ) {
+        // Строка выражения
+        Text(
+            text = state.expressionText.ifEmpty { " " },
+            fontSize = 12.sp,
+            fontWeight = FontWeight.W300,
+            color = ColorSubtext,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Результат
         Text(
             text = state.displayText,
-            fontSize = fontSize,
+            fontSize = mainFontSize,
             fontWeight = FontWeight.W300,
             color = ColorDisplay,
             textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

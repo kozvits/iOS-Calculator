@@ -150,12 +150,12 @@ class CalculatorEngineTest {
     @Test
     fun `целое число форматируется без дроби`() {
         // Разделитель тысяч — точка
-        assertEquals("1 000", CalculatorEngine.formatForDisplay(1000.0))
+        assertEquals("1000", CalculatorEngine.formatForDisplay(1000.0))
     }
 
     @Test
     fun `большое число форматируется с разделителями через точку`() {
-        assertEquals("1 000 000", CalculatorEngine.formatForDisplay(1_000_000.0))
+        assertEquals("1000000", CalculatorEngine.formatForDisplay(1_000_000.0))
     }
 
     @Test

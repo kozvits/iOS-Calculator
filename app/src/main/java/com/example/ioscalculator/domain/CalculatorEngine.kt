@@ -134,22 +134,21 @@ object CalculatorEngine {
 
         val clean = cleanTinyValue(value)
 
-        // Целое число — форматируем без дроби
+        // Целое число — без дроби, без разделителей
         if (clean == kotlin.math.floor(clean) && abs(clean) < 1e15) {
-            val long = clean.toLong()
-            return formatWithThousands(long.toString())
+            return clean.toLong().toString()
         }
 
-        // Пробуем представить с ограниченным числом знаков
+        // Дробное — обрезаем незначащие нули
         val formatted = "%.${CalculatorConstants.OUTPUT_DECIMAL_PLACES}f".format(clean)
             .trimEnd('0')
             .trimEnd('.')
 
-        // Если символов больше лимита — переходим на E-нотацию
+        // Если цифр слишком много — E-нотация
         return if (stripped(formatted).length > CalculatorConstants.DISPLAY_MAX_DIGITS) {
             compactScientific(clean)
         } else {
-            formatWithThousands(formatted)
+            formatted
         }
     }
 
@@ -172,16 +171,7 @@ object CalculatorEngine {
     private fun stripped(s: String): String =
         s.replace("-", "").replace(".", "").replace(",", "").replace(" ", "")
 
-    /** Вставляет разделители тысяч в целую часть числа. */
-    private fun formatWithThousands(s: String): String {
-        val dotIdx = s.indexOf('.')
-        val intPart = if (dotIdx >= 0) s.substring(0, dotIdx) else s
-        val fracPart = if (dotIdx >= 0) s.substring(dotIdx) else ""
-        val negative = intPart.startsWith('-')
-        val digits = if (negative) intPart.drop(1) else intPart
-        val grouped = digits.reversed().chunked(3).joinToString(" ").reversed()
-        return (if (negative) "-" else "") + grouped + fracPart
-    }
+    /** Убирает минус, точку, пробелы для подсчёта реальных цифр. */
 
     /** Компактная E-нотация: заменяет E+ формат на читаемый. */
     private fun compactScientific(v: Double): String {
