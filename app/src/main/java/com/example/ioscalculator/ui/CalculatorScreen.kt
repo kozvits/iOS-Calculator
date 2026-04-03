@@ -107,14 +107,14 @@ private fun PortraitLayout(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Bottom
     ) {
-        // Иконки вверху справа
-        TopIconRow(onEvent)
-
         // Дисплей
         PortraitDisplay(state)
 
+        // Иконки под дисплеем, справа
+        TopIconRow(onEvent)
+
         // Кнопки
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         PortraitButtons(state, onEvent)
         Spacer(Modifier.height(16.dp))
     }
