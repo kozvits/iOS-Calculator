@@ -3,6 +3,7 @@ package com.example.ioscalculator.ui
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -245,125 +246,171 @@ private fun LandscapeLayout(
     state: CalculatorState.Active,
     onEvent: (CalculatorEvent) -> Unit,
 ) {
-    val gap = 8.dp
-    Row(
+    val gap = 6.dp
+    BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(gap)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        // ── Левая колонка: научные кнопки ─────────────────────────────────
-        Column(
-            Modifier.weight(1.1f),
-            verticalArrangement = Arrangement.spacedBy(gap)
+        // Всего 6 рядов кнопок + дисплей (44dp) + отступы
+        val displayH = 44.dp
+        val totalGaps = gap * 7 // 6 рядов = 7 промежутков (включая под дисплеем)
+        val btnH = (maxHeight - displayH - totalGaps) / 6
+
+        Row(
+            Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(gap)
         ) {
-            // AngleMode переключатель
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            // ── Левая колонка: научные кнопки ──────────────────────────
+            Column(
+                Modifier.weight(1.1f),
+                verticalArrangement = Arrangement.spacedBy(gap)
             ) {
-                AngleModeToggle(
-                    current = state.angleMode,
-                    modifier = Modifier.weight(1f)
-                ) { onEvent(CalculatorEvent.AngleModeChanged(it)) }
-                CalcButton("(", BtnStyle.Dark, Modifier.weight(1f), textSize = 18)
-                { onEvent(CalculatorEvent.OpenBracket) }
-                CalcButton(")", BtnStyle.Dark, Modifier.weight(1f), textSize = 18)
-                { onEvent(CalculatorEvent.CloseBracket) }
-            }
-            // Научные кнопки 5 рядов
-            val sciRows = listOf(
-                listOf(ScientificFunc.SQUARE to "x²",  ScientificFunc.CUBE to "x³",   null to "xʸ",      ScientificFunc.RECIPROCAL to "1/x"),
-                listOf(ScientificFunc.SQRT  to "√x",   ScientificFunc.LOG  to "log",  ScientificFunc.LN to "ln",    null to "eˣ"),
-                listOf(ScientificFunc.SIN   to "sin",  ScientificFunc.COS  to "cos",  ScientificFunc.TAN to "tan",  ScientificFunc.RAND to "Rand"),
-                listOf(ScientificFunc.ASIN  to "sin⁻¹",ScientificFunc.ACOS to "cos⁻¹",ScientificFunc.ATAN to "tan⁻¹", null to "π"),
-                listOf(null to "e", null to "EE", null to "mc", null to "mr"),
-            )
-            sciRows.forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    row.forEach { (func, label) ->
-                        CalcButton(
-                            label = label,
-                            style = BtnStyle.SciDark,
-                            modifier = Modifier.weight(1f),
-                            textSize = 14,
-                        ) {
-                            when {
-                                func != null -> onEvent(CalculatorEvent.ScientificFuncPressed(func))
-                                label == "π" -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.PI))
-                                label == "e" -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.E))
-                                label == "xʸ" -> onEvent(CalculatorEvent.OperatorPressed(BinaryOp.POWER))
+                // Ряд 0: DEG/RAD + скобки
+                Row(
+                    Modifier.fillMaxWidth().height(btnH),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AngleModeToggle(
+                        current = state.angleMode,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    ) { onEvent(CalculatorEvent.AngleModeChanged(it)) }
+                    LandBtn("(", BtnStyle.Dark, btnH, Modifier.weight(1f), 16)
+                    { onEvent(CalculatorEvent.OpenBracket) }
+                    LandBtn(")", BtnStyle.Dark, btnH, Modifier.weight(1f), 16)
+                    { onEvent(CalculatorEvent.CloseBracket) }
+                }
+                // Ряды 1-5: научные функции
+                val sciRows = listOf(
+                    listOf(ScientificFunc.SQUARE to "x²",   ScientificFunc.CUBE to "x³",    null to "xʸ",       ScientificFunc.RECIPROCAL to "1/x"),
+                    listOf(ScientificFunc.SQRT   to "√x",   ScientificFunc.LOG  to "log",   ScientificFunc.LN   to "ln",    null to "eˣ"),
+                    listOf(ScientificFunc.SIN    to "sin",  ScientificFunc.COS  to "cos",   ScientificFunc.TAN  to "tan",   ScientificFunc.RAND to "Rand"),
+                    listOf(ScientificFunc.ASIN   to "sin⁻¹",ScientificFunc.ACOS to "cos⁻¹",ScientificFunc.ATAN to "tan⁻¹",null to "π"),
+                    listOf(null to "e",            null to "EE",              null to "mc",               null to "mr"),
+                )
+                sciRows.forEach { row ->
+                    Row(
+                        Modifier.fillMaxWidth().height(btnH),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        row.forEach { (func, label) ->
+                            LandBtn(label, BtnStyle.SciDark, btnH, Modifier.weight(1f), 13) {
+                                when {
+                                    func != null  -> onEvent(CalculatorEvent.ScientificFuncPressed(func))
+                                    label == "π"  -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.PI))
+                                    label == "e"  -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.E))
+                                    label == "xʸ" -> onEvent(CalculatorEvent.OperatorPressed(BinaryOp.POWER))
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        // ── Правая колонка: дисплей + основные кнопки ────────────────────
-        Column(
-            Modifier.weight(1f),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // ДИСПЛЕЙ — однострочный, прижат к верху правой колонки
-            LandscapeDisplay(state)
+            // ── Правая колонка: дисплей + основные кнопки ──────────────
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(gap)
+            ) {
+                // Дисплей
+                LandscapeDisplay(state, displayH)
 
-            Spacer(Modifier.height(4.dp))
-
-            // Основные кнопки
-            val acLabel = if (state.hasInput && !state.startNewInput) "C" else "AC"
-            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    CalcButton(acLabel, BtnStyle.Gray, Modifier.weight(1f), textSize = 18) { onEvent(CalculatorEvent.ClearPressed) }
-                    CalcButton("+/-", BtnStyle.Gray, Modifier.weight(1f), textSize = 16) { onEvent(CalculatorEvent.NegatePressed) }
-                    CalcButton("%",   BtnStyle.Gray, Modifier.weight(1f), textSize = 18) { onEvent(CalculatorEvent.PercentPressed) }
-                    CalcButton("÷", BtnStyle.Orange, Modifier.weight(1f), textSize = 20, active = state.activeOp == BinaryOp.DIVIDE)
+                // Основные кнопки
+                val acLabel = if (state.hasInput && !state.startNewInput) "C" else "AC"
+                Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    LandBtn(acLabel, BtnStyle.Gray, btnH, Modifier.weight(1f), 16) { onEvent(CalculatorEvent.ClearPressed) }
+                    LandBtn("+/-",  BtnStyle.Gray,   btnH, Modifier.weight(1f), 14) { onEvent(CalculatorEvent.NegatePressed) }
+                    LandBtn("%",    BtnStyle.Gray,   btnH, Modifier.weight(1f), 16) { onEvent(CalculatorEvent.PercentPressed) }
+                    LandBtn("÷",   BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.DIVIDE)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("7","8","9").forEach { d ->
-                        CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), textSize = 20) { onEvent(CalculatorEvent.DigitPressed(d)) }
-                    }
-                    CalcButton("×", BtnStyle.Orange, Modifier.weight(1f), textSize = 20, active = state.activeOp == BinaryOp.MULTIPLY)
+                Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    listOf("7","8","9").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DigitPressed(d)) } }
+                    LandBtn("×", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.MULTIPLY)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("4","5","6").forEach { d ->
-                        CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), textSize = 20) { onEvent(CalculatorEvent.DigitPressed(d)) }
-                    }
-                    CalcButton("−", BtnStyle.Orange, Modifier.weight(1f), textSize = 20, active = state.activeOp == BinaryOp.SUBTRACT)
+                Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    listOf("4","5","6").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DigitPressed(d)) } }
+                    LandBtn("−", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.SUBTRACT)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("1","2","3").forEach { d ->
-                        CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), textSize = 20) { onEvent(CalculatorEvent.DigitPressed(d)) }
-                    }
-                    CalcButton("+", BtnStyle.Orange, Modifier.weight(1f), textSize = 20, active = state.activeOp == BinaryOp.ADD)
+                Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    listOf("1","2","3").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DigitPressed(d)) } }
+                    LandBtn("+", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.ADD)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    CalcButton("0", BtnStyle.Dark, Modifier.weight(2f), textSize = 20, wide = true) { onEvent(CalculatorEvent.DigitPressed("0")) }
-                    CalcButton(".", BtnStyle.Dark, Modifier.weight(1f), textSize = 20) { onEvent(CalculatorEvent.DecimalPressed) }
-                    CalcButton("=", BtnStyle.Orange, Modifier.weight(1f), textSize = 20) { onEvent(CalculatorEvent.EqualsPressed) }
+                Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    LandBtn("0", BtnStyle.Dark, btnH, Modifier.weight(2f), 18, wide = true) { onEvent(CalculatorEvent.DigitPressed("0")) }
+                    LandBtn(".", BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DecimalPressed) }
+                    LandBtn("=", BtnStyle.Orange, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.EqualsPressed) }
                 }
             }
         }
     }
 }
 
+/** Кнопка для ландшафтного режима — высота задана явно, форма адаптируется. */
 @Composable
-private fun LandscapeDisplay(state: CalculatorState.Active) {
+private fun LandBtn(
+    label: String,
+    style: BtnStyle,
+    height: Dp,
+    modifier: Modifier = Modifier,
+    textSize: Int = 16,
+    wide: Boolean = false,
+    active: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val bg = when {
+        active && style == BtnStyle.Orange -> ColorWhite
+        style == BtnStyle.Dark    -> ColorDark
+        style == BtnStyle.Gray    -> ColorGray
+        style == BtnStyle.Orange  -> ColorOrange
+        style == BtnStyle.SciDark -> Color(0xFF1C1C1E)
+        else -> ColorDark
+    }
+    val fg = when {
+        active && style == BtnStyle.Orange -> ColorOrange
+        style == BtnStyle.Gray -> Color.Black
+        else -> ColorWhite
+    }
+    val radius = height / 2
+    val shape = RoundedCornerShape(radius)
+
+    Box(
+        modifier
+            .height(height)
+            .clip(shape)
+            .background(bg)
+            .clickable(onClick = onClick),
+        contentAlignment = if (wide) Alignment.CenterStart else Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = fg,
+            fontSize = textSize.sp,
+            fontWeight = FontWeight.W400,
+            modifier = if (wide) Modifier.padding(start = height * 0.28f) else Modifier,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 44.dp) {
     val fontSize = when {
-        state.displayText.length > 12 -> 22.sp
-        state.displayText.length > 9  -> 28.sp
-        state.displayText.length > 6  -> 34.sp
-        else -> 40.sp
+        state.displayText.length > 12 -> 18.sp
+        state.displayText.length > 9  -> 22.sp
+        state.displayText.length > 6  -> 28.sp
+        else -> 34.sp
     }
     Box(
         Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1C1C1E), RoundedCornerShape(12.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .height(height)
+            .background(Color(0xFF1C1C1E), RoundedCornerShape(10.dp))
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         contentAlignment = Alignment.CenterEnd
     ) {
         Text(
