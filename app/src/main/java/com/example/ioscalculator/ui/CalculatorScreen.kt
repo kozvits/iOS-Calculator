@@ -659,13 +659,6 @@ private fun SettingsSheet(
                 checked  = settings.hapticEnabled,
             ) { onUpdate(settings.copy(hapticEnabled = it)) }
 
-            // Разделитель тысяч
-            SettingsToggle(
-                title    = "Разделитель тысяч",
-                subtitle = "1,000,000 вместо 1000000",
-                checked  = settings.thousandsSeparator,
-            ) { onUpdate(settings.copy(thousandsSeparator = it)) }
-
             Spacer(Modifier.height(16.dp))
             Text("Угол", color = ColorSubtext, fontSize = 13.sp)
             Spacer(Modifier.height(8.dp))
