@@ -33,13 +33,39 @@ import com.example.ioscalculator.viewmodel.CalculatorViewModel
 import com.example.ioscalculator.viewmodel.CalcTheme
 
 // ── Цвета ──────────────────────────────────────────────────────────────────
-private val ColorBg      = Color(0xFF000000)
-private val ColorDark    = Color(0xFF333336)
-private val ColorGray    = Color(0xFFA5A5A5)
-private val ColorOrange  = Color(0xFFFF9F0A)
-private val ColorWhite   = Color.White
-private val ColorDisplay = Color.White
-private val ColorSubtext = Color(0xFF8E8E93)
+private fun themeColors(theme: CalcTheme) = when (theme) {
+    CalcTheme.DARK -> ThemeColors(
+        bg      = Color(0xFF000000),
+        dark    = Color(0xFF333336),
+        gray    = Color(0xFFA5A5A5),
+        orange  = Color(0xFFFF9F0A),
+        white   = Color.White,
+        display = Color.White,
+        subtext = Color(0xFF8E8E93),
+        sciDark = Color(0xFF1C1C1E)
+    )
+    CalcTheme.LIGHT -> ThemeColors(
+        bg      = Color(0xFFFFFFFF),
+        dark    = Color(0xFFF2F2F7),
+        gray    = Color(0xFFD1D1D6),
+        orange  = Color(0xFFFF9F0A),
+        white   = Color.Black,
+        display = Color.Black,
+        subtext = Color(0xFF8E8E93),
+        sciDark = Color(0xFFF2F2F7)
+    )
+}
+
+private data class ThemeColors(
+    val bg: Color,
+    val dark: Color,
+    val gray: Color,
+    val orange: Color,
+    val white: Color,
+    val display: Color,
+    val subtext: Color,
+    val sciDark: Color
+)
 
 @Composable
 fun CalculatorScreen(vm: CalculatorViewModel = hiltViewModel()) {
@@ -52,17 +78,18 @@ fun CalculatorScreen(vm: CalculatorViewModel = hiltViewModel()) {
     val active = state as? CalculatorState.Active ?: return
     val isLandscape = LocalConfiguration.current.orientation ==
             android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val colors = themeColors(settings.theme)
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(ColorBg)
+            .background(colors.bg)
             .systemBarsPadding()
     ) {
         if (isLandscape) {
-            LandscapeLayout(active, vm::onEvent)
+            LandscapeLayout(active, vm::onEvent, colors)
         } else {
-            PortraitLayout(active, vm::onEvent)
+            PortraitLayout(active, vm::onEvent, colors)
         }
 
         // ── История (bottom sheet стиль) ──────────────────────────────────
@@ -76,6 +103,7 @@ fun CalculatorScreen(vm: CalculatorViewModel = hiltViewModel()) {
                 entries = history,
                 onDismiss = vm::dismissHistory,
                 onClear = vm::clearHistory,
+                colors = colors
             )
         }
 
@@ -90,6 +118,7 @@ fun CalculatorScreen(vm: CalculatorViewModel = hiltViewModel()) {
                 settings = settings,
                 onDismiss = vm::dismissSettings,
                 onUpdate  = vm::updateSettings,
+                colors = colors
             )
         }
     }
@@ -102,26 +131,30 @@ fun CalculatorScreen(vm: CalculatorViewModel = hiltViewModel()) {
 private fun PortraitLayout(
     state: CalculatorState.Active,
     onEvent: (CalculatorEvent) -> Unit,
+    colors: ThemeColors
 ) {
     Column(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Bottom
     ) {
         // Дисплей
-        PortraitDisplay(state)
+        PortraitDisplay(state, colors)
 
         // Иконки под дисплеем, справа
-        TopIconRow(onEvent)
+        TopIconRow(onEvent, colors)
 
         // Кнопки
         Spacer(Modifier.height(4.dp))
-        PortraitButtons(state, onEvent)
+        PortraitButtons(state, onEvent, colors)
         Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun TopIconRow(onEvent: (CalculatorEvent) -> Unit) {
+private fun TopIconRow(
+    onEvent: (CalculatorEvent) -> Unit,
+    colors: ThemeColors = themeColors(CalcTheme.DARK)
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -134,7 +167,7 @@ private fun TopIconRow(onEvent: (CalculatorEvent) -> Unit) {
             Icon(
                 imageVector = Icons.Default.History,
                 contentDescription = "История",
-                tint = ColorSubtext,
+                tint = colors.subtext,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -143,7 +176,7 @@ private fun TopIconRow(onEvent: (CalculatorEvent) -> Unit) {
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Настройки",
-                tint = ColorSubtext,
+                tint = colors.subtext,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -152,7 +185,7 @@ private fun TopIconRow(onEvent: (CalculatorEvent) -> Unit) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Backspace,
                 contentDescription = "Backspace",
-                tint = ColorSubtext,
+                tint = colors.subtext,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -160,7 +193,10 @@ private fun TopIconRow(onEvent: (CalculatorEvent) -> Unit) {
 }
 
 @Composable
-private fun PortraitDisplay(state: CalculatorState.Active) {
+private fun PortraitDisplay(
+    state: CalculatorState.Active,
+    colors: ThemeColors = themeColors(CalcTheme.DARK)
+) {
     val mainFontSize = when {
         state.displayText.length > 11 -> 44.sp
         state.displayText.length > 8  -> 60.sp
@@ -184,7 +220,7 @@ private fun PortraitDisplay(state: CalculatorState.Active) {
                 text = state.expressionText,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.W300,
-                color = ColorSubtext,
+                color = colors.subtext,
                 textAlign = TextAlign.End,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -197,7 +233,7 @@ private fun PortraitDisplay(state: CalculatorState.Active) {
             text = state.displayText,
             fontSize = mainFontSize,
             fontWeight = FontWeight.W200,
-            color = ColorDisplay,
+            color = colors.display,
             textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -210,6 +246,7 @@ private fun PortraitDisplay(state: CalculatorState.Active) {
 private fun PortraitButtons(
     state: CalculatorState.Active,
     onEvent: (CalculatorEvent) -> Unit,
+    colors: ThemeColors
 ) {
     val gap = 12.dp
     Column(
@@ -219,41 +256,41 @@ private fun PortraitButtons(
         val acLabel = if (state.hasInput && !state.startNewInput) "C" else "AC"
         // Row 1
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            CalcButton(acLabel, BtnStyle.Gray, Modifier.weight(1f)) { onEvent(CalculatorEvent.ClearPressed) }
-            CalcButton("+/-",  BtnStyle.Gray, Modifier.weight(1f)) { onEvent(CalculatorEvent.NegatePressed) }
-            CalcButton("%",    BtnStyle.Gray, Modifier.weight(1f)) { onEvent(CalculatorEvent.PercentPressed) }
-            CalcButton("÷",    BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.DIVIDE)
+            CalcButton(acLabel, BtnStyle.Gray, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.ClearPressed) }
+            CalcButton("+/-",  BtnStyle.Gray, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.NegatePressed) }
+            CalcButton("%",    BtnStyle.Gray, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.PercentPressed) }
+            CalcButton("÷",    BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.DIVIDE, colors = colors)
             { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }
         }
         // Row 2
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
             for (d in listOf("7","8","9")) {
-                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f)) { onEvent(CalculatorEvent.DigitPressed(d)) }
+                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) }
             }
-            CalcButton("×", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.MULTIPLY)
+            CalcButton("×", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.MULTIPLY, colors = colors)
             { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }
         }
         // Row 3
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
             for (d in listOf("4","5","6")) {
-                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f)) { onEvent(CalculatorEvent.DigitPressed(d)) }
+                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) }
             }
-            CalcButton("−", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.SUBTRACT)
+            CalcButton("−", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.SUBTRACT, colors = colors)
             { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }
         }
         // Row 4
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
             for (d in listOf("1","2","3")) {
-                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f)) { onEvent(CalculatorEvent.DigitPressed(d)) }
+                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) }
             }
-            CalcButton("+", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.ADD)
+            CalcButton("+", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.ADD, colors = colors)
             { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }
         }
         // Row 5 — ноль широкий
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            CalcButton("0", BtnStyle.Dark, Modifier.weight(2f), wide = true) { onEvent(CalculatorEvent.DigitPressed("0")) }
-            CalcButton(".", BtnStyle.Dark, Modifier.weight(1f)) { onEvent(CalculatorEvent.DecimalPressed) }
-            CalcButton("=", BtnStyle.Orange, Modifier.weight(1f)) { onEvent(CalculatorEvent.EqualsPressed) }
+            CalcButton("0", BtnStyle.Dark, Modifier.weight(2f), wide = true, colors = colors) { onEvent(CalculatorEvent.DigitPressed("0")) }
+            CalcButton(".", BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DecimalPressed) }
+            CalcButton("=", BtnStyle.Orange, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.EqualsPressed) }
         }
     }
 }
@@ -265,6 +302,7 @@ private fun PortraitButtons(
 private fun LandscapeLayout(
     state: CalculatorState.Active,
     onEvent: (CalculatorEvent) -> Unit,
+    colors: ThemeColors
 ) {
     val gap = 6.dp
     BoxWithConstraints(
@@ -294,11 +332,12 @@ private fun LandscapeLayout(
                 ) {
                     AngleModeToggle(
                         current = state.angleMode,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        colors = colors
                     ) { onEvent(CalculatorEvent.AngleModeChanged(it)) }
-                    LandBtn("(", BtnStyle.Dark, btnH, Modifier.weight(1f), 16)
+                    LandBtn("(", BtnStyle.Dark, btnH, Modifier.weight(1f), 16, colors = colors)
                     { onEvent(CalculatorEvent.OpenBracket) }
-                    LandBtn(")", BtnStyle.Dark, btnH, Modifier.weight(1f), 16)
+                    LandBtn(")", BtnStyle.Dark, btnH, Modifier.weight(1f), 16, colors = colors)
                     { onEvent(CalculatorEvent.CloseBracket) }
                 }
                 // Ряды 1-5: научные функции
@@ -315,7 +354,7 @@ private fun LandscapeLayout(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         row.forEach { (func, label) ->
-                            LandBtn(label, BtnStyle.SciDark, btnH, Modifier.weight(1f), 13) {
+                            LandBtn(label, BtnStyle.SciDark, btnH, Modifier.weight(1f), 13, colors = colors) {
                                 when {
                                     func != null  -> onEvent(CalculatorEvent.ScientificFuncPressed(func))
                                     label == "π"  -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.PI))
@@ -334,36 +373,36 @@ private fun LandscapeLayout(
                 verticalArrangement = Arrangement.spacedBy(gap)
             ) {
                 // Дисплей
-                LandscapeDisplay(state, displayH)
+                LandscapeDisplay(state, displayH, colors)
 
                 // Основные кнопки
                 val acLabel = if (state.hasInput && !state.startNewInput) "C" else "AC"
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    LandBtn(acLabel, BtnStyle.Gray, btnH, Modifier.weight(1f), 16) { onEvent(CalculatorEvent.ClearPressed) }
-                    LandBtn("+/-",  BtnStyle.Gray,   btnH, Modifier.weight(1f), 14) { onEvent(CalculatorEvent.NegatePressed) }
-                    LandBtn("%",    BtnStyle.Gray,   btnH, Modifier.weight(1f), 16) { onEvent(CalculatorEvent.PercentPressed) }
-                    LandBtn("÷",   BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.DIVIDE)
+                    LandBtn(acLabel, BtnStyle.Gray, btnH, Modifier.weight(1f), 16, colors = colors) { onEvent(CalculatorEvent.ClearPressed) }
+                    LandBtn("+/-",  BtnStyle.Gray,   btnH, Modifier.weight(1f), 14, colors = colors) { onEvent(CalculatorEvent.NegatePressed) }
+                    LandBtn("%",    BtnStyle.Gray,   btnH, Modifier.weight(1f), 16, colors = colors) { onEvent(CalculatorEvent.PercentPressed) }
+                    LandBtn("÷",   BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.DIVIDE, colors = colors)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("7","8","9").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DigitPressed(d)) } }
-                    LandBtn("×", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.MULTIPLY)
+                    listOf("7","8","9").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) } }
+                    LandBtn("×", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.MULTIPLY, colors = colors)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("4","5","6").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DigitPressed(d)) } }
-                    LandBtn("−", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.SUBTRACT)
+                    listOf("4","5","6").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) } }
+                    LandBtn("−", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.SUBTRACT, colors = colors)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("1","2","3").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DigitPressed(d)) } }
-                    LandBtn("+", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.ADD)
+                    listOf("1","2","3").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) } }
+                    LandBtn("+", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.ADD, colors = colors)
                     { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    LandBtn("0", BtnStyle.Dark, btnH, Modifier.weight(2f), 18, wide = true) { onEvent(CalculatorEvent.DigitPressed("0")) }
-                    LandBtn(".", BtnStyle.Dark, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.DecimalPressed) }
-                    LandBtn("=", BtnStyle.Orange, btnH, Modifier.weight(1f), 18) { onEvent(CalculatorEvent.EqualsPressed) }
+                    LandBtn("0", BtnStyle.Dark, btnH, Modifier.weight(2f), 18, wide = true, colors = colors) { onEvent(CalculatorEvent.DigitPressed("0")) }
+                    LandBtn(".", BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DecimalPressed) }
+                    LandBtn("=", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.EqualsPressed) }
                 }
             }
         }
@@ -381,19 +420,20 @@ private fun LandBtn(
     wide: Boolean = false,
     active: Boolean = false,
     onClick: () -> Unit,
+    colors: ThemeColors
 ) {
     val bg = when {
-        active && style == BtnStyle.Orange -> ColorWhite
-        style == BtnStyle.Dark    -> ColorDark
-        style == BtnStyle.Gray    -> ColorGray
-        style == BtnStyle.Orange  -> ColorOrange
-        style == BtnStyle.SciDark -> Color(0xFF1C1C1E)
-        else -> ColorDark
+        active && style == BtnStyle.Orange -> colors.white
+        style == BtnStyle.Dark    -> colors.dark
+        style == BtnStyle.Gray    -> colors.gray
+        style == BtnStyle.Orange  -> colors.orange
+        style == BtnStyle.SciDark -> colors.sciDark
+        else -> colors.dark
     }
     val fg = when {
-        active && style == BtnStyle.Orange -> ColorOrange
+        active && style == BtnStyle.Orange -> colors.orange
         style == BtnStyle.Gray -> Color.Black
-        else -> ColorWhite
+        else -> colors.white
     }
     val radius = height / 2
     val shape = RoundedCornerShape(radius)
@@ -418,7 +458,11 @@ private fun LandBtn(
 }
 
 @Composable
-private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 56.dp) {
+private fun LandscapeDisplay(
+    state: CalculatorState.Active,
+    height: Dp = 56.dp,
+    colors: ThemeColors
+) {
     val mainFontSize = when {
         state.displayText.length > 12 -> 16.sp
         state.displayText.length > 9  -> 20.sp
@@ -429,7 +473,7 @@ private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 56.dp) 
         Modifier
             .fillMaxWidth()
             .height(height)
-            .background(Color(0xFF1C1C1E), RoundedCornerShape(10.dp))
+            .background(colors.sciDark, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.SpaceEvenly,
@@ -439,7 +483,7 @@ private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 56.dp) 
             text = state.expressionText.ifEmpty { " " },
             fontSize = 12.sp,
             fontWeight = FontWeight.W300,
-            color = ColorSubtext,
+            color = colors.subtext,
             textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -450,7 +494,7 @@ private fun LandscapeDisplay(state: CalculatorState.Active, height: Dp = 56.dp) 
             text = state.displayText,
             fontSize = mainFontSize,
             fontWeight = FontWeight.W300,
-            color = ColorDisplay,
+            color = colors.display,
             textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -464,11 +508,12 @@ private fun AngleModeToggle(
     current: AngleMode,
     modifier: Modifier = Modifier,
     onChange: (AngleMode) -> Unit,
+    colors: ThemeColors
 ) {
     Row(
         modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF2C2C2E)),
+            .background(colors.dark),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -478,14 +523,14 @@ private fun AngleModeToggle(
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (selected) Color(0xFF636366) else Color.Transparent)
+                    .background(if (selected) colors.subtext else Color.Transparent)
                     .clickable { onChange(mode) }
                     .padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = mode.name,
-                    color = if (selected) ColorWhite else ColorSubtext,
+                    color = if (selected) colors.white else colors.subtext,
                     fontSize = 12.sp,
                     fontWeight = if (selected) FontWeight.W600 else FontWeight.W400,
                 )
@@ -508,19 +553,20 @@ private fun CalcButton(
     wide: Boolean = false,
     active: Boolean = false,
     onClick: () -> Unit,
+    colors: ThemeColors
 ) {
     val bg = when {
-        active && style == BtnStyle.Orange -> ColorWhite
-        style == BtnStyle.Dark    -> ColorDark
-        style == BtnStyle.Gray    -> ColorGray
-        style == BtnStyle.Orange  -> ColorOrange
-        style == BtnStyle.SciDark -> Color(0xFF1C1C1E)
-        else -> ColorDark
+        active && style == BtnStyle.Orange -> colors.white
+        style == BtnStyle.Dark    -> colors.dark
+        style == BtnStyle.Gray    -> colors.gray
+        style == BtnStyle.Orange  -> colors.orange
+        style == BtnStyle.SciDark -> colors.sciDark
+        else -> colors.dark
     }
     val fg = when {
-        active && style == BtnStyle.Orange -> ColorOrange
+        active && style == BtnStyle.Orange -> colors.orange
         style == BtnStyle.Gray -> Color.Black
-        else -> ColorWhite
+        else -> colors.white
     }
     val shape = if (wide) RoundedCornerShape(50) else CircleShape
 
@@ -551,13 +597,14 @@ private fun HistorySheet(
     entries: List<com.example.ioscalculator.viewmodel.HistoryEntry>,
     onDismiss: () -> Unit,
     onClear: () -> Unit,
+    colors: ThemeColors
 ) {
     Surface(
         Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.55f),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = Color(0xFF1C1C1E),
+        color = colors.sciDark,
     ) {
         Column(Modifier.padding(16.dp)) {
             // Шапка
@@ -566,26 +613,26 @@ private fun HistorySheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("История", color = ColorWhite, fontSize = 17.sp, fontWeight = FontWeight.W600)
+                Text("История", color = colors.white, fontSize = 17.sp, fontWeight = FontWeight.W600)
                 Row {
                     if (entries.isNotEmpty()) {
                         TextButton(onClick = onClear) {
-                            Text("Очистить", color = ColorOrange, fontSize = 15.sp)
+                            Text("Очистить", color = colors.orange, fontSize = 15.sp)
                         }
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = ColorSubtext)
+                        Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = colors.subtext)
                     }
                 }
             }
-            HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
+            HorizontalDivider(color = colors.dark, thickness = 0.5.dp)
             Spacer(Modifier.height(8.dp))
 
             if (entries.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         "История пуста",
-                        color = ColorSubtext,
+                        color = colors.subtext,
                         fontSize = 15.sp,
                         textAlign = TextAlign.Center,
                     )
@@ -594,15 +641,15 @@ private fun HistorySheet(
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(entries) { entry ->
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
-                            Text(entry.expression, color = ColorSubtext, fontSize = 14.sp)
+                            Text(entry.expression, color = colors.subtext, fontSize = 14.sp)
                             Text(
                                 "= ${entry.result}",
-                                color = ColorWhite,
+                                color = colors.white,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.W300,
                             )
                         }
-                        HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+                        HorizontalDivider(color = colors.dark, thickness = 0.5.dp)
                     }
                 }
             }
@@ -618,13 +665,14 @@ private fun SettingsSheet(
     settings: CalculatorSettings,
     onDismiss: () -> Unit,
     onUpdate: (CalculatorSettings) -> Unit,
+    colors: ThemeColors
 ) {
     Surface(
         Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.65f),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = Color(0xFF1C1C1E),
+        color = colors.sciDark,
     ) {
         Column(
             Modifier
@@ -637,12 +685,12 @@ private fun SettingsSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Настройки", color = ColorWhite, fontSize = 17.sp, fontWeight = FontWeight.W600)
+                Text("Настройки", color = colors.white, fontSize = 17.sp, fontWeight = FontWeight.W600)
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = ColorSubtext)
+                    Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = colors.subtext)
                 }
             }
-            HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
+            HorizontalDivider(color = colors.dark, thickness = 0.5.dp)
             Spacer(Modifier.height(8.dp))
 
             // Звук
@@ -650,6 +698,7 @@ private fun SettingsSheet(
                 title   = "Звук кнопок",
                 subtitle = "Звуковой отклик при нажатии",
                 checked = settings.soundEnabled,
+                colors = colors
             ) { onUpdate(settings.copy(soundEnabled = it)) }
 
             // Haptic
@@ -657,10 +706,11 @@ private fun SettingsSheet(
                 title    = "Тактильный отклик",
                 subtitle = "Вибрация при нажатии кнопок",
                 checked  = settings.hapticEnabled,
+                colors = colors
             ) { onUpdate(settings.copy(hapticEnabled = it)) }
 
             Spacer(Modifier.height(16.dp))
-            Text("Угол", color = ColorSubtext, fontSize = 13.sp)
+            Text("Угол", color = colors.subtext, fontSize = 13.sp)
             Spacer(Modifier.height(8.dp))
 
             // Режим угла
@@ -668,7 +718,7 @@ private fun SettingsSheet(
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF2C2C2E)),
+                    .background(colors.dark),
             ) {
                 listOf(AngleMode.DEG to "Градусы", AngleMode.RAD to "Радианы").forEach { (mode, label) ->
                     val selected = settings.angleMode == mode
@@ -676,14 +726,14 @@ private fun SettingsSheet(
                         Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (selected) ColorOrange else Color.Transparent)
+                            .background(if (selected) colors.orange else Color.Transparent)
                             .clickable { onUpdate(settings.copy(angleMode = mode)) }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             label,
-                            color = if (selected) ColorWhite else ColorSubtext,
+                            color = if (selected) colors.white else colors.subtext,
                             fontSize = 15.sp,
                             fontWeight = if (selected) FontWeight.W600 else FontWeight.W400,
                         )
@@ -692,7 +742,7 @@ private fun SettingsSheet(
             }
 
             Spacer(Modifier.height(16.dp))
-            Text("Тема", color = ColorSubtext, fontSize = 13.sp)
+            Text("Тема", color = colors.subtext, fontSize = 13.sp)
             Spacer(Modifier.height(8.dp))
 
             // Тема
@@ -700,7 +750,7 @@ private fun SettingsSheet(
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF2C2C2E)),
+                    .background(colors.dark),
             ) {
                 listOf(CalcTheme.DARK to "Тёмная", CalcTheme.LIGHT to "Светлая").forEach { (theme, label) ->
                     val selected = settings.theme == theme
@@ -708,14 +758,14 @@ private fun SettingsSheet(
                         Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (selected) ColorOrange else Color.Transparent)
+                            .background(if (selected) colors.orange else Color.Transparent)
                             .clickable { onUpdate(settings.copy(theme = theme)) }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             label,
-                            color = if (selected) ColorWhite else ColorSubtext,
+                            color = if (selected) colors.white else colors.subtext,
                             fontSize = 15.sp,
                             fontWeight = if (selected) FontWeight.W600 else FontWeight.W400,
                         )
@@ -728,7 +778,7 @@ private fun SettingsSheet(
             // Версия
             Text(
                 "iOS Calculator Clone v1.0",
-                color = ColorSubtext,
+                color = colors.subtext,
                 fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
@@ -743,6 +793,7 @@ private fun SettingsToggle(
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    colors: ThemeColors
 ) {
     Row(
         Modifier
@@ -752,19 +803,19 @@ private fun SettingsToggle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = ColorWhite, fontSize = 15.sp)
-            Text(subtitle, color = ColorSubtext, fontSize = 12.sp)
+            Text(title, color = colors.white, fontSize = 15.sp)
+            Text(subtitle, color = colors.subtext, fontSize = 12.sp)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = ColorWhite,
+                checkedThumbColor = colors.white,
                 checkedTrackColor = Color(0xFF34C759),
-                uncheckedThumbColor = ColorWhite,
-                uncheckedTrackColor = Color(0xFF3A3A3C),
+                uncheckedThumbColor = colors.white,
+                uncheckedTrackColor = colors.dark,
             )
         )
     }
-    HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+    HorizontalDivider(color = colors.dark, thickness = 0.5.dp)
 }
