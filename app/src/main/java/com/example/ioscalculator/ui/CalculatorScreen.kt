@@ -256,41 +256,37 @@ private fun PortraitButtons(
         val acLabel = if (state.hasInput && !state.startNewInput) "C" else "AC"
         // Row 1
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            CalcButton(acLabel, BtnStyle.Gray, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.ClearPressed) }
-            CalcButton("+/-",  BtnStyle.Gray, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.NegatePressed) }
-            CalcButton("%",    BtnStyle.Gray, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.PercentPressed) }
-            CalcButton("÷",    BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.DIVIDE, colors = colors)
-            { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }
+            CalcButton(acLabel, BtnStyle.Gray, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.ClearPressed) }, colors = colors)
+            CalcButton("+/-",  BtnStyle.Gray, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.NegatePressed) }, colors = colors)
+            CalcButton("%",    BtnStyle.Gray, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.PercentPressed) }, colors = colors)
+            CalcButton("÷",    BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.DIVIDE, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }, colors = colors)
         }
         // Row 2
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
             for (d in listOf("7","8","9")) {
-                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) }
+                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.DigitPressed(d)) }, colors = colors)
             }
-            CalcButton("×", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.MULTIPLY, colors = colors)
-            { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }
+            CalcButton("×", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.MULTIPLY, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }, colors = colors)
         }
         // Row 3
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
             for (d in listOf("4","5","6")) {
-                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) }
+                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.DigitPressed(d)) }, colors = colors)
             }
-            CalcButton("−", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.SUBTRACT, colors = colors)
-            { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }
+            CalcButton("−", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.SUBTRACT, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }, colors = colors)
         }
         // Row 4
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
             for (d in listOf("1","2","3")) {
-                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) }
+                CalcButton(d, BtnStyle.Dark, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.DigitPressed(d)) }, colors = colors)
             }
-            CalcButton("+", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.ADD, colors = colors)
-            { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }
+            CalcButton("+", BtnStyle.Orange, Modifier.weight(1f), active = state.activeOp == BinaryOp.ADD, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }, colors = colors)
         }
         // Row 5 — ноль широкий
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            CalcButton("0", BtnStyle.Dark, Modifier.weight(2f), wide = true, colors = colors) { onEvent(CalculatorEvent.DigitPressed("0")) }
-            CalcButton(".", BtnStyle.Dark, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.DecimalPressed) }
-            CalcButton("=", BtnStyle.Orange, Modifier.weight(1f), colors = colors) { onEvent(CalculatorEvent.EqualsPressed) }
+            CalcButton("0", BtnStyle.Dark, Modifier.weight(2f), wide = true, onClick = { onEvent(CalculatorEvent.DigitPressed("0")) }, colors = colors)
+            CalcButton(".", BtnStyle.Dark, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.DecimalPressed) }, colors = colors)
+            CalcButton("=", BtnStyle.Orange, Modifier.weight(1f), onClick = { onEvent(CalculatorEvent.EqualsPressed) }, colors = colors)
         }
     }
 }
@@ -333,12 +329,11 @@ private fun LandscapeLayout(
                     AngleModeToggle(
                         current = state.angleMode,
                         modifier = Modifier.weight(1f).fillMaxHeight(),
+                        onChange = { onEvent(CalculatorEvent.AngleModeChanged(it)) },
                         colors = colors
-                    ) { onEvent(CalculatorEvent.AngleModeChanged(it)) }
-                    LandBtn("(", BtnStyle.Dark, btnH, Modifier.weight(1f), 16, colors = colors)
-                    { onEvent(CalculatorEvent.OpenBracket) }
-                    LandBtn(")", BtnStyle.Dark, btnH, Modifier.weight(1f), 16, colors = colors)
-                    { onEvent(CalculatorEvent.CloseBracket) }
+                    )
+                    LandBtn("(", BtnStyle.Dark, btnH, Modifier.weight(1f), 16, onClick = { onEvent(CalculatorEvent.OpenBracket) }, colors = colors)
+                    LandBtn(")", BtnStyle.Dark, btnH, Modifier.weight(1f), 16, onClick = { onEvent(CalculatorEvent.CloseBracket) }, colors = colors)
                 }
                 // Ряды 1-5: научные функции
                 val sciRows = listOf(
@@ -354,14 +349,14 @@ private fun LandscapeLayout(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         row.forEach { (func, label) ->
-                            LandBtn(label, BtnStyle.SciDark, btnH, Modifier.weight(1f), 13, colors = colors) {
+                            LandBtn(label, BtnStyle.SciDark, btnH, Modifier.weight(1f), 13, onClick = {
                                 when {
                                     func != null  -> onEvent(CalculatorEvent.ScientificFuncPressed(func))
                                     label == "π"  -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.PI))
                                     label == "e"  -> onEvent(CalculatorEvent.ConstantPressed(CalculatorConstantValue.E))
                                     label == "xʸ" -> onEvent(CalculatorEvent.OperatorPressed(BinaryOp.POWER))
                                 }
-                            }
+                            }, colors = colors)
                         }
                     }
                 }
@@ -378,31 +373,27 @@ private fun LandscapeLayout(
                 // Основные кнопки
                 val acLabel = if (state.hasInput && !state.startNewInput) "C" else "AC"
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    LandBtn(acLabel, BtnStyle.Gray, btnH, Modifier.weight(1f), 16, colors = colors) { onEvent(CalculatorEvent.ClearPressed) }
-                    LandBtn("+/-",  BtnStyle.Gray,   btnH, Modifier.weight(1f), 14, colors = colors) { onEvent(CalculatorEvent.NegatePressed) }
-                    LandBtn("%",    BtnStyle.Gray,   btnH, Modifier.weight(1f), 16, colors = colors) { onEvent(CalculatorEvent.PercentPressed) }
-                    LandBtn("÷",   BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.DIVIDE, colors = colors)
-                    { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }
+                    LandBtn(acLabel, BtnStyle.Gray, btnH, Modifier.weight(1f), 16, onClick = { onEvent(CalculatorEvent.ClearPressed) }, colors = colors)
+                    LandBtn("+/-",  BtnStyle.Gray,   btnH, Modifier.weight(1f), 14, onClick = { onEvent(CalculatorEvent.NegatePressed) }, colors = colors)
+                    LandBtn("%",    BtnStyle.Gray,   btnH, Modifier.weight(1f), 16, onClick = { onEvent(CalculatorEvent.PercentPressed) }, colors = colors)
+                    LandBtn("÷",   BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.DIVIDE, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.DIVIDE)) }, colors = colors)
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("7","8","9").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) } }
-                    LandBtn("×", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.MULTIPLY, colors = colors)
-                    { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }
+                    listOf("7","8","9").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, onClick = { onEvent(CalculatorEvent.DigitPressed(d)) }, colors = colors) }
+                    LandBtn("×", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.MULTIPLY, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.MULTIPLY)) }, colors = colors)
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("4","5","6").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) } }
-                    LandBtn("−", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.SUBTRACT, colors = colors)
-                    { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }
+                    listOf("4","5","6").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, onClick = { onEvent(CalculatorEvent.DigitPressed(d)) }, colors = colors) }
+                    LandBtn("−", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.SUBTRACT, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.SUBTRACT)) }, colors = colors)
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    listOf("1","2","3").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DigitPressed(d)) } }
-                    LandBtn("+", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.ADD, colors = colors)
-                    { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }
+                    listOf("1","2","3").forEach { d -> LandBtn(d, BtnStyle.Dark, btnH, Modifier.weight(1f), 18, onClick = { onEvent(CalculatorEvent.DigitPressed(d)) }, colors = colors) }
+                    LandBtn("+", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, active = state.activeOp == BinaryOp.ADD, onClick = { onEvent(CalculatorEvent.OperatorPressed(BinaryOp.ADD)) }, colors = colors)
                 }
                 Row(Modifier.fillMaxWidth().height(btnH), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    LandBtn("0", BtnStyle.Dark, btnH, Modifier.weight(2f), 18, wide = true, colors = colors) { onEvent(CalculatorEvent.DigitPressed("0")) }
-                    LandBtn(".", BtnStyle.Dark, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.DecimalPressed) }
-                    LandBtn("=", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, colors = colors) { onEvent(CalculatorEvent.EqualsPressed) }
+                    LandBtn("0", BtnStyle.Dark, btnH, Modifier.weight(2f), 18, wide = true, onClick = { onEvent(CalculatorEvent.DigitPressed("0")) }, colors = colors)
+                    LandBtn(".", BtnStyle.Dark, btnH, Modifier.weight(1f), 18, onClick = { onEvent(CalculatorEvent.DecimalPressed) }, colors = colors)
+                    LandBtn("=", BtnStyle.Orange, btnH, Modifier.weight(1f), 18, onClick = { onEvent(CalculatorEvent.EqualsPressed) }, colors = colors)
                 }
             }
         }
@@ -698,16 +689,18 @@ private fun SettingsSheet(
                 title   = "Звук кнопок",
                 subtitle = "Звуковой отклик при нажатии",
                 checked = settings.soundEnabled,
+                onCheckedChange = { onUpdate(settings.copy(soundEnabled = it)) },
                 colors = colors
-            ) { onUpdate(settings.copy(soundEnabled = it)) }
+            )
 
             // Haptic
             SettingsToggle(
                 title    = "Тактильный отклик",
                 subtitle = "Вибрация при нажатии кнопок",
                 checked  = settings.hapticEnabled,
+                onCheckedChange = { onUpdate(settings.copy(hapticEnabled = it)) },
                 colors = colors
-            ) { onUpdate(settings.copy(hapticEnabled = it)) }
+            )
 
             Spacer(Modifier.height(16.dp))
             Text("Угол", color = colors.subtext, fontSize = 13.sp)
